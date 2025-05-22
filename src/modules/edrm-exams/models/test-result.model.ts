@@ -1,0 +1,51 @@
+import { EnduranceSchema, EnduranceModelType, ObjectId } from 'endurance-core';
+import Test from './test.model.js';
+import User from './user.model.js';
+
+export enum TestState {
+    Pending = 'pending',
+    InProgress = 'inProgress',
+    Finish = 'finish'
+}
+
+interface Response {
+    questionId: ObjectId;
+    response: string;
+    score?: number;
+    comment?: string;
+}
+
+@EnduranceModelType.modelOptions({
+    options: {
+        allowMixed: EnduranceModelType.Severity.ALLOW
+    }
+})
+class TestResult extends EnduranceSchema {
+    @EnduranceModelType.prop({ ref: () => Test, required: true })
+    public testId!: typeof Test;
+
+    @EnduranceModelType.prop({ ref: () => User, required: true })
+    public candidateId!: typeof User;
+
+    @EnduranceModelType.prop({ required: true, enum: TestState, default: TestState.Pending })
+    public state!: TestState;
+
+    @EnduranceModelType.prop({ type: [Object], required: true })
+    public responses!: Response[];
+
+    @EnduranceModelType.prop()
+    public score?: number;
+
+    @EnduranceModelType.prop()
+    public startTime?: Date;
+
+    @EnduranceModelType.prop()
+    public endTime?: Date;
+
+    public static getModel() {
+        return TestResultModel;
+    }
+}
+
+const TestResultModel = EnduranceModelType.getModelForClass(TestResult);
+export default TestResultModel;
