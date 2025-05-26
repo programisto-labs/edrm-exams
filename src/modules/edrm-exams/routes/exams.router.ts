@@ -1119,8 +1119,7 @@ class ExamsRouter extends EnduranceRouter {
         const emailPassword = process.env.EMAIL_PASSWORD_TURING;
 
         // Construire le lien d'invitation
-        const baseLink = process.env.TEST_INVITATION_LINK || '';
-        const testLink = `${baseLink}?testId=${result.testId}&candidateId=${result.candidateId}`;
+        const testLink = process.env.TEST_INVITATION_LINK || '';
 
         // Envoyer l'email via l'event emitter
         await emitter.emit(eventTypes.SEND_EMAIL, {
