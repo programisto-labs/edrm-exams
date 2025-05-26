@@ -176,7 +176,6 @@ class CandidateRouter extends EnduranceRouter {
                     from: process.env.EMAIL_USER_TURING,
                     emailUser: process.env.EMAIL_USER_TURING,
                     emailPassword: process.env.EMAIL_PASSWORD_TURING,
-                    subject: 'Connexion à votre espace candidat Programisto',
                     data: {
                         magicLink
                     }
