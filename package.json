@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "name": "edrm-exams",
+  "name": "@programisto/edrm-exams",
   "version": "0.1.4",
   "description": "an api for online exams",
   "main": "app.js",
@@ -9,7 +9,9 @@
     "dev": "tsc-watch --onSuccess \"node ./dist/bin/www\"",
     "test": "mocha",
     "build": "tsc && npm run copy-files",
-    "copy-files": "copyfiles -u 1 'src/**/*.txt' dist"
+    "copy-files": "copyfiles -u 1 'src/**/*.txt' dist",
+    "lint": "eslint \"**/*.{ts,tsx}\"",
+    "prepare": "husky install"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",
@@ -33,22 +35,43 @@
     "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@commitlint/config-conventional": "^19.8.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.3",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^14.0.3",
     "@types/node": "^22.15.3",
+    "commitlint": "^19.8.1",
     "copyfiles": "^2.4.1",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^8.57.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.6.0",
+    "husky": "^9.1.7",
     "mocha": "^11.0.1",
     "nodemon": "^3.1.4",
+    "semantic-release": "^24.2.5",
     "supertest": "^3.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/florianduport/endurance-template.git"
+    "url": "git+https://github.com/programisto-labs/endurance-template.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/florianduport/endurance-template/issues"
+    "url": "https://github.com/programisto-labs/endurance-template/issues"
   },
-  "homepage": "https://github.com/florianduport/endurance-template#readme"
+  "homepage": "https://github.com/programisto-labs/endurance-template#readme",
+  "files": [
+    "dist",
+    "README.md"
+  ]
 }
