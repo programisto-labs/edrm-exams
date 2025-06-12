@@ -1,8 +1,11 @@
-import { EnduranceSchema, EnduranceModelType, ObjectId } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
 
 enum QuestionType {
+    // eslint-disable-next-line no-unused-vars
     MCQ = 'MCQ',
+    // eslint-disable-next-line no-unused-vars
     FreeQuestion = 'free question',
+    // eslint-disable-next-line no-unused-vars
     Exercise = 'exercice'
 }
 
@@ -12,7 +15,9 @@ interface PossibleResponse {
 }
 
 enum TextType {
+    // eslint-disable-next-line no-unused-vars
     Text = 'text',
+    // eslint-disable-next-line no-unused-vars
     Code = 'code'
 }
 

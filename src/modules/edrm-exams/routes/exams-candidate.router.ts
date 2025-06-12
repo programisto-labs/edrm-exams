@@ -28,13 +28,13 @@ class CandidateRouter extends EnduranceRouter {
             console.log(firstName, lastName, email);
 
             if (!firstName || !lastName || !email) {
-                return res.status(400).json({ message: "Error, firstName, lastName and email are required" });
+                return res.status(400).json({ message: 'Error, firstName, lastName and email are required' });
             }
 
             try {
                 const newCandidate = new CandidateModel({ firstName, lastName, email });
                 await newCandidate.save();
-                res.status(201).json({ message: "candidate created with success", candidate: newCandidate });
+                res.status(201).json({ message: 'candidate created with success', candidate: newCandidate });
             } catch (err) {
                 console.error('error when creating candidate : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -106,10 +106,10 @@ class CandidateRouter extends EnduranceRouter {
                 const candidate = await CandidateModel.findById(id);
 
                 if (!candidate) {
-                    return res.status(404).json({ message: "no candidate found with this id" });
+                    return res.status(404).json({ message: 'no candidate found with this id' });
                 }
 
-                res.status(200).json({ message: "candidate : ", data: candidate });
+                res.status(200).json({ message: 'candidate : ', data: candidate });
             } catch (err) {
                 console.error('error when getting candidate : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -126,7 +126,6 @@ class CandidateRouter extends EnduranceRouter {
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
-
 
                 return res.json({
                     ...candidate.toObject()
@@ -145,7 +144,6 @@ class CandidateRouter extends EnduranceRouter {
                 if (!email) {
                     return res.status(400).json({ message: 'Email requis' });
                 }
-
 
                 const candidate = await CandidateModel.findOne({ email });
                 if (!candidate) {
@@ -270,7 +268,7 @@ class CandidateRouter extends EnduranceRouter {
                 // Vérifier si le candidat existe
                 const candidate = await CandidateModel.findById(candidateId);
                 if (!candidate) {
-                    return res.status(404).json({ message: "Candidat non trouvé" });
+                    return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
 
                 // Construction de la requête
@@ -322,13 +320,15 @@ class CandidateRouter extends EnduranceRouter {
                     }
                     return {
                         ...result,
-                        test: test ? {
+                        test: test
+? {
                             title: test.title,
                             description: test.description,
                             targetJob: test.targetJob,
                             seniorityLevel: test.seniorityLevel,
                             categories: categoriesWithNames
-                        } : null
+                        }
+: null
                     };
                 });
 

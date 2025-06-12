@@ -28,13 +28,13 @@ class UserRouter extends EnduranceRouter {
             const { firstName, lastName, email, companyId } = req.body;
 
             if (!firstName || !lastName || !email || !companyId) {
-                return res.status(400).json({ message: "Error, firstName, lastName, email and companyId are required" });
+                return res.status(400).json({ message: 'Error, firstName, lastName, email and companyId are required' });
             }
 
             try {
                 const newUser = new User({ firstName, lastName, email, companyId });
                 await newUser.save();
-                res.status(201).json({ message: "user created with sucess", user: newUser });
+                res.status(201).json({ message: 'user created with sucess', user: newUser });
             } catch (err) {
                 console.error('error when creating user : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -49,7 +49,7 @@ class UserRouter extends EnduranceRouter {
                 const user = await User.findById(id);
 
                 if (!user) {
-                    return res.status(404).json({ message: "no user founded with this id" });
+                    return res.status(404).json({ message: 'no user founded with this id' });
                 }
 
                 res.status(200).json({ data: user });
@@ -67,7 +67,7 @@ class UserRouter extends EnduranceRouter {
             try {
                 const user = await User.findById(id);
                 if (!user) {
-                    return res.status(404).json({ message: "no user founded with this id" });
+                    return res.status(404).json({ message: 'no user founded with this id' });
                 }
 
                 const updateData = {
@@ -80,7 +80,7 @@ class UserRouter extends EnduranceRouter {
                 await User.findByIdAndUpdate(id, updateData, { new: true });
                 const updatedUser = await User.findById(id);
 
-                res.status(200).json({ message: "user updated", user: updatedUser });
+                res.status(200).json({ message: 'user updated', user: updatedUser });
             } catch (err) {
                 console.error('error when updating user : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -94,9 +94,9 @@ class UserRouter extends EnduranceRouter {
             try {
                 const user = await User.findByIdAndDelete(id);
                 if (!user) {
-                    return res.status(404).json({ message: "no user founded with this id" });
+                    return res.status(404).json({ message: 'no user founded with this id' });
                 }
-                res.status(200).json({ message: "user deleted", user });
+                res.status(200).json({ message: 'user deleted', user });
             } catch (err) {
                 console.error('error when deleting user : ', err);
                 res.status(500).json({ message: 'Internal server error' });
