@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType, ObjectId } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
 
 @EnduranceModelType.modelOptions({
     options: {
@@ -26,7 +26,6 @@ class Candidate extends EnduranceSchema {
 
     @EnduranceModelType.prop({ required: false, type: Date })
     public authTokenExpiresAt?: Date;
-
 
     public static getModel() {
         return CandidateModel;

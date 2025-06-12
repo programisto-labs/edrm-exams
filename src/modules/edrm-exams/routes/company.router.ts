@@ -1,5 +1,4 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions } from 'endurance-core';
-import { Response, NextFunction } from 'express';
 import Company from '../models/company.model.js';
 import User from '../models/user.model.js';
 
@@ -27,7 +26,7 @@ class CompanyRouter extends EnduranceRouter {
                 const company = await Company.findById(id);
 
                 if (!company) {
-                    return res.status(404).json({ message: "Aucune entreprise trouvée avec cet ID" });
+                    return res.status(404).json({ message: 'Aucune entreprise trouvée avec cet ID' });
                 }
 
                 res.status(200).json({ data: company });
@@ -48,7 +47,7 @@ class CompanyRouter extends EnduranceRouter {
             try {
                 const newCompany = new Company({ name, logo });
                 await newCompany.save();
-                res.status(201).json({ message: "Entreprise créée avec succès", company: newCompany });
+                res.status(201).json({ message: 'Entreprise créée avec succès', company: newCompany });
             } catch (err) {
                 console.error('Erreur lors de la création de l\'entreprise : ', err);
                 res.status(500).json({ message: 'Erreur interne du serveur' });
@@ -64,7 +63,7 @@ class CompanyRouter extends EnduranceRouter {
                 const company = await Company.findById(id);
 
                 if (!company) {
-                    return res.status(404).json({ message: "Aucune entreprise trouvée avec cet ID" });
+                    return res.status(404).json({ message: 'Aucune entreprise trouvée avec cet ID' });
                 }
 
                 const updateData = {
@@ -75,7 +74,7 @@ class CompanyRouter extends EnduranceRouter {
                 await Company.findByIdAndUpdate(id, updateData, { new: true });
                 const updatedCompany = await Company.findById(id);
 
-                res.status(200).json({ message: "Entreprise mise à jour", company: updatedCompany });
+                res.status(200).json({ message: 'Entreprise mise à jour', company: updatedCompany });
             } catch (err) {
                 console.error('Erreur lors de la mise à jour de l\'entreprise : ', err);
                 res.status(500).json({ message: 'Erreur interne du serveur' });
@@ -89,9 +88,9 @@ class CompanyRouter extends EnduranceRouter {
             try {
                 const company = await Company.findByIdAndDelete(id);
                 if (!company) {
-                    return res.status(404).json({ message: "Aucune entreprise trouvée avec cet ID" });
+                    return res.status(404).json({ message: 'Aucune entreprise trouvée avec cet ID' });
                 }
-                res.status(200).json({ message: "Entreprise supprimée", company });
+                res.status(200).json({ message: 'Entreprise supprimée', company });
             } catch (err) {
                 console.error('Erreur lors de la suppression de l\'entreprise : ', err);
                 res.status(500).json({ message: 'Erreur interne du serveur' });
