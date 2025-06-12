@@ -1,9 +1,12 @@
-import { EnduranceSchema, EnduranceModelType, ObjectId } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
 import Company from './company.model.js';
 
 enum UserRole {
+    // eslint-disable-next-line no-unused-vars
     Admin = 'admin',
+    // eslint-disable-next-line no-unused-vars
     Recruiter = 'recruiter',
+    // eslint-disable-next-line no-unused-vars
     Candidate = 'candidate'
 }
 

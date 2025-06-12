@@ -3,8 +3,11 @@ import Test from './test.model.js';
 import User from './user.model.js';
 
 export enum TestState {
+    // eslint-disable-next-line no-unused-vars
     Pending = 'pending',
+    // eslint-disable-next-line no-unused-vars
     InProgress = 'inProgress',
+    // eslint-disable-next-line no-unused-vars
     Finish = 'finish'
 }
 

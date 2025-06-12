@@ -1,10 +1,9 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from 'endurance-core';
 import CandidateModel from '../models/candidate.models.js';
-import TestResult from '../models/test-result.model.js';
-import { TestState } from '../models/test-result.model.js';
+import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
-import jwt from 'jsonwebtoken';
 
+// eslint-disable-next-line no-unused-vars
 interface CandidateData {
     firstName: string;
     lastName: string;
@@ -36,7 +35,7 @@ class ResultRouter extends EnduranceRouter {
                 // Vérifier si le candidat existe
                 const candidate = await CandidateModel.findById(candidateId);
                 if (!candidate) {
-                    return res.status(404).json({ message: "Candidat non trouvé" });
+                    return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
 
                 // Construction de la requête
@@ -98,13 +97,15 @@ class ResultRouter extends EnduranceRouter {
                         ...resultWithoutResponses,
                         testResultId: result._id,
                         maxScore,
-                        test: test ? {
+                        test: test
+? {
                             title: test.title,
                             description: test.description,
                             targetJob: test.targetJob,
                             seniorityLevel: test.seniorityLevel,
                             categories: categoriesWithNames
-                        } : null
+                        }
+: null
                     };
                 }));
 
@@ -297,7 +298,7 @@ class ResultRouter extends EnduranceRouter {
         // Enregistrer la réponse à une question pour un résultat de test
         this.post('/response', authenticatedOptions, async (req: any, res: any) => {
             try {
-                const { response, questionId, testResultId, testId } = req.body;
+                const { response, questionId, testResultId } = req.body;
 
                 // Récupérer le résultat de test
                 const result = await TestResult.findById(testResultId);
@@ -326,7 +327,7 @@ class ResultRouter extends EnduranceRouter {
                 // Enregistrer la réponse
                 result.responses = result.responses || [];
                 result.responses.push({
-                    questionId: questionId,
+                    questionId,
                     response,
                     score: 0,
                     comment: ''

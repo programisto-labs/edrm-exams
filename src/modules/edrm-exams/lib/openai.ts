@@ -1,9 +1,8 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
-import fs from "fs";
+import fs from 'fs';
 import path from 'path';
-import TestQuestion from "../models/test-question.model.js";
-import { ChatCompletionMessageParam, ChatCompletionCreateParamsNonStreaming } from "openai/resources/chat/completions";
+import { ChatCompletionMessageParam, ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions';
 
 interface CreateQuestionParams {
   job: string;
@@ -44,7 +43,7 @@ interface ContextBuilder {
 
 interface OpenAIParams extends Omit<ChatCompletionCreateParamsNonStreaming, 'response_format'> {
   response_format?: {
-    type: "json_object";
+    type: 'json_object';
   };
 }
 
@@ -69,7 +68,7 @@ const contextBuilder: ContextBuilder = {
   },
 
   async correctQuestion({ question, result }: CorrectQuestionParams) {
-    let response = "";
+    let response = '';
     for (let i = 0; i < result.responses.length; i++) {
       if (result.responses[i].questionId === question._id) {
         response = result.responses[i].response;
@@ -100,8 +99,8 @@ export async function generateLiveMessage(
   let retryCount = 0;
   const context = await contextBuilder[messageType](params as any);
   const text = fs.readFileSync(
-    path.join(__dirname, "openai", `${messageType}.txt`),
-    "utf8"
+    path.join(__dirname, 'openai', `${messageType}.txt`),
+    'utf8'
   );
 
   const message = text.replace(/\${(.*?)}/g, (_, v) => context[v]);
@@ -109,30 +108,30 @@ export async function generateLiveMessage(
   while (retryCount <= MAX_RETRY) {
     try {
       const openAIParams: OpenAIParams = {
-        model: "gpt-4-1106-preview",
+        model: 'gpt-4-1106-preview',
         temperature: 0.7,
-        messages: [{ role: "system", content: message }] as ChatCompletionMessageParam[],
+        messages: [{ role: 'system', content: message }] as ChatCompletionMessageParam[]
       };
 
       if (json) {
-        openAIParams.response_format = { type: "json_object" };
+        openAIParams.response_format = { type: 'json_object' };
       }
 
       const result = await openai.chat.completions.create(openAIParams);
       const content = result.choices[0].message.content;
       if (!content) {
-        throw new Error("No content in response");
+        throw new Error('No content in response');
       }
       return removeQuotes(content);
     } catch (error) {
       retryCount++;
       console.log(error);
       if (retryCount > MAX_RETRY) {
-        return "Brain freezed, I cannot generate a live message right now.";
+        return 'Brain freezed, I cannot generate a live message right now.';
       }
     }
   }
-  return "Brain freezed, I cannot generate a live message right now.";
+  return 'Brain freezed, I cannot generate a live message right now.';
 }
 
 function removeQuotes(str: string): string {

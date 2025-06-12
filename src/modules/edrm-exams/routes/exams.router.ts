@@ -3,27 +3,25 @@ import Test from '../models/test.model.js';
 import TestQuestion from '../models/test-question.model.js';
 import TestResult from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
-import User from '../models/user.model.js';
 import Candidate from '../models/candidate.models.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import { Document, Types } from 'mongoose';
 
-
 // Définition des types
-interface TestQuestion {
+interface TestQuestionRef {
   questionId: Types.ObjectId;
   order: number;
 }
 
-interface TestCategory {
+interface TestCategoryRef {
   categoryId: Types.ObjectId;
   expertiseLevel: number;
 }
 
 // Extension du type Test pour inclure les propriétés manquantes
 interface ExtendedTest extends Document {
-  categories: TestCategory[];
-  questions: TestQuestion[];
+  categories: TestCategoryRef[];
+  questions: TestQuestionRef[];
   invitationText?: string;
   testName: string;
   targetJob: string;
@@ -59,13 +57,13 @@ class ExamsRouter extends EnduranceRouter {
       const { name } = req.body;
 
       if (!name) {
-        return res.status(400).json({ message: "Error, all params are required" });
+        return res.status(400).json({ message: 'Error, all params are required' });
       }
 
       try {
         const newCategory = new TestCategory({ name });
         await newCategory.save();
-        res.status(201).json({ message: "category created with sucess", category: newCategory });
+        res.status(201).json({ message: 'category created with sucess', category: newCategory });
       } catch (err) {
         console.error('error when creating category : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -89,7 +87,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const category = await TestCategory.findById(id);
         if (!category) {
-          return res.status(404).json({ message: "no category founded with this id" });
+          return res.status(404).json({ message: 'no category founded with this id' });
         }
         res.status(200).json({ array: category });
       } catch (err) {
@@ -104,7 +102,7 @@ class ExamsRouter extends EnduranceRouter {
       const user = req.user;
 
       if (!title || !targetJob || !seniorityLevel) {
-        return res.status(400).json({ message: "Error, all params are required" });
+        return res.status(400).json({ message: 'Error, all params are required' });
       }
 
       try {
@@ -135,7 +133,7 @@ class ExamsRouter extends EnduranceRouter {
           categories: processedCategories
         });
         await newTest.save();
-        res.status(201).json({ message: "test created with sucess", data: newTest });
+        res.status(201).json({ message: 'test created with sucess', data: newTest });
       } catch (err) {
         console.error('error when creating test : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -150,7 +148,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const test = await Test.findById(id);
         if (!test) {
-          return res.status(404).json({ message: "Test non trouvé" });
+          return res.status(404).json({ message: 'Test non trouvé' });
         }
 
         if (title) test.title = title;
@@ -177,7 +175,7 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         await test.save();
-        res.status(200).json({ message: "Test modifié avec succès", data: test });
+        res.status(200).json({ message: 'Test modifié avec succès', data: test });
       } catch (err) {
         console.error('Erreur lors de la modification du test : ', err);
         res.status(500).json({ message: 'Erreur interne du serveur' });
@@ -191,14 +189,14 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const test = await Test.findById(id);
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
         for (let i = 0; i < test.questions.length; i++) {
           await TestQuestion.findByIdAndDelete(test.questions[i]);
         }
         await TestResult.deleteMany({ testId: id });
         await Test.findByIdAndDelete(id);
-        res.status(200).json({ message: "test deleted with sucess" });
+        res.status(200).json({ message: 'test deleted with sucess' });
       } catch (err) {
         console.error('error when deleting user : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -213,7 +211,7 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id);
 
         if (!test) {
-          return res.status(404).json({ message: "no test founded with this id" });
+          return res.status(404).json({ message: 'no test founded with this id' });
         }
 
         const questions: Document[] = [];
@@ -327,7 +325,7 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const category = await TestCategory.findOne({ name: categoryName });
-        if (!category) return res.status(404).json({ message: "Category not found" });
+        if (!category) return res.status(404).json({ message: 'Category not found' });
 
         const test = await Test.findByIdAndUpdate(
           testId,
@@ -335,12 +333,12 @@ class ExamsRouter extends EnduranceRouter {
           { new: true }
         );
 
-        if (!test) return res.status(404).json({ message: "Test not found" });
+        if (!test) return res.status(404).json({ message: 'Test not found' });
 
-        res.status(200).json({ message: "Category removed", test });
+        res.status(200).json({ message: 'Category removed', test });
       } catch (err) {
-        console.error("Error when removing category from test:", err);
-        res.status(500).json({ message: "Internal server error" });
+        console.error('Error when removing category from test:', err);
+        res.status(500).json({ message: 'Internal server error' });
       }
     });
 
@@ -360,22 +358,22 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(testId) as ExtendedTest;
 
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const categoryExists = test.categories.some(cat => cat.categoryId.equals(category._id));
 
         if (categoryExists) {
-          return res.status(200).json({ message: "Category already exists in the test" });
+          return res.status(200).json({ message: 'Category already exists in the test' });
         }
 
         test.categories.push({ categoryId: category._id, expertiseLevel });
         await test.save();
 
-        res.status(200).json({ message: "Category added successfully", data: test });
+        res.status(200).json({ message: 'Category added successfully', data: test });
       } catch (err) {
-        console.error("Error when adding category to test:", err);
-        res.status(500).json({ message: "Internal server error" });
+        console.error('Error when adding category to test:', err);
+        res.status(500).json({ message: 'Internal server error' });
       }
     });
 
@@ -384,7 +382,7 @@ class ExamsRouter extends EnduranceRouter {
       const { questionId } = req.params;
       const question = await TestQuestion.findById(questionId);
       if (!question) {
-        return res.status(404).json({ message: "no question founded with this id" });
+        return res.status(404).json({ message: 'no question founded with this id' });
       }
       res.status(200).json({ data: question });
     });
@@ -397,7 +395,7 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(testId);
 
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const questions: Document[] = [];
@@ -409,8 +407,8 @@ class ExamsRouter extends EnduranceRouter {
         }
         res.status(200).json({ array: questions });
       } catch (err) {
-        console.error("Error when getting question:", err);
-        res.status(500).json({ message: "Internal server error" });
+        console.error('Error when getting question:', err);
+        res.status(500).json({ message: 'Internal server error' });
       }
     });
 
@@ -420,14 +418,14 @@ class ExamsRouter extends EnduranceRouter {
       const question = await TestQuestion.findByIdAndDelete(questionId);
       const test = await Test.findById(testId);
       if (!question) {
-        return res.status(404).json({ message: "no question founded with this id" });
+        return res.status(404).json({ message: 'no question founded with this id' });
       }
       if (!test) {
-        return res.status(404).json({ message: "no test founded with this id" });
+        return res.status(404).json({ message: 'no test founded with this id' });
       }
       test.questions = test.questions.filter(id => id.toString() !== questionId);
       await test.save();
-      res.status(200).json({ message: "question deleted with sucess" });
+      res.status(200).json({ message: 'question deleted with sucess' });
     });
 
     // Supprimer toutes les questions d'un test
@@ -435,14 +433,14 @@ class ExamsRouter extends EnduranceRouter {
       const { testId } = req.params;
       const test = await Test.findById(testId);
       if (!test) {
-        return res.status(404).json({ message: "no test founded with this id" });
+        return res.status(404).json({ message: 'no test founded with this id' });
       }
       for (const questionId of test.questions) {
         await TestQuestion.findByIdAndDelete(questionId);
       }
       test.questions = [];
       await test.save();
-      res.status(200).json({ message: "questions deleted with sucess" });
+      res.status(200).json({ message: 'questions deleted with sucess' });
     });
 
     // Modifier une question
@@ -453,7 +451,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const question = await TestQuestion.findById(id);
         if (!question) {
-          return res.status(404).json({ message: "no question founded with this id" });
+          return res.status(404).json({ message: 'no question founded with this id' });
         }
         if (instruction) {
           question.instruction = instruction;
@@ -472,13 +470,12 @@ class ExamsRouter extends EnduranceRouter {
           question.possibleResponses = possibleResponses;
         }
         await question.save();
-        res.status(200).json({ message: "question modified with sucess" });
+        res.status(200).json({ message: 'question modified with sucess' });
       } catch (err) {
         console.error('error when modify question : ', err);
         res.status(500).json({ message: 'Internal server error' });
       }
     });
-
 
     // Ajouter une question à un test
     this.put('/test/addCustomQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
@@ -489,7 +486,7 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id) as ExtendedTest;
 
         if (!test) {
-          return res.status(404).json({ message: "no test founded with this id" });
+          return res.status(404).json({ message: 'no test founded with this id' });
         }
 
         const question = new TestQuestion({
@@ -504,7 +501,7 @@ class ExamsRouter extends EnduranceRouter {
         test.questions.push({ questionId: question._id, order: test.questions.length });
         await test.save();
 
-        res.status(200).json({ message: "question added in test", test });
+        res.status(200).json({ message: 'question added in test', test });
       } catch (err) {
         console.error('error when add question in test : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -520,20 +517,20 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id) as ExtendedTest;
 
         if (!test) {
-          return res.status(404).json({ message: "no test founded with this id" });
+          return res.status(404).json({ message: 'no test founded with this id' });
         }
 
         const otherQuestionsIds = test.questions.map(question => question.questionId);
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
         const generatedQuestion = await generateLiveMessage(
-          "createQuestion",
+          'createQuestion',
           {
             job: test.targetJob,
             seniority: test.seniorityLevel,
-            questionType: questionType,
-            category: category,
-            expertiseLevel: expertiseLevel,
+            questionType,
+            category,
+            expertiseLevel,
             otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
           },
           true
@@ -544,7 +541,7 @@ class ExamsRouter extends EnduranceRouter {
         test.questions.push({ questionId: question._id, order: test.questions.length });
         await test.save();
 
-        res.status(200).json({ message: "question added in test", test });
+        res.status(200).json({ message: 'question added in test', test });
       } catch (err) {
         console.error('error when add question in test : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -559,7 +556,7 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(testId);
 
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         for (let i = test.questions.length - 1; i > 0; i--) {
@@ -569,10 +566,10 @@ class ExamsRouter extends EnduranceRouter {
 
         await test.save();
 
-        res.status(200).json({ message: "Questions shuffled", test });
+        res.status(200).json({ message: 'Questions shuffled', test });
       } catch (err) {
-        console.error("Error when shuffling questions:", err);
-        res.status(500).json({ message: "Internal server error" });
+        console.error('Error when shuffling questions:', err);
+        res.status(500).json({ message: 'Internal server error' });
       }
     });
 
@@ -585,15 +582,15 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id) as ExtendedTest;
 
         if (!test) {
-          return res.status(404).json({ message: "no test founded with this id" });
+          return res.status(404).json({ message: 'no test founded with this id' });
         }
 
         test.invitationText = invitationText;
         await test.save();
 
         res.status(200).json({
-          message: "invitation text added in test",
-          invitationText: invitationText
+          message: 'invitation text added in test',
+          invitationText
         });
       } catch (err) {
         console.error('error when add invitation text in test : ', err);
@@ -609,10 +606,10 @@ class ExamsRouter extends EnduranceRouter {
         const result = await TestResult.findById(id);
 
         if (!result) {
-          return res.status(404).json({ message: "no result founded with this id" });
+          return res.status(404).json({ message: 'no result founded with this id' });
         }
 
-        res.status(200).json({ message: "result", data: result });
+        res.status(200).json({ message: 'result', data: result });
       } catch (err) {
         console.error('error when geting result : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -624,7 +621,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const results = await TestResult.find();
         if (!results) {
-          return res.status(404).json({ message: "no results founded" });
+          return res.status(404).json({ message: 'no results founded' });
         }
         res.status(200).json({ array: results });
       } catch (err) {
@@ -638,13 +635,13 @@ class ExamsRouter extends EnduranceRouter {
       const { candidateId, testId } = req.body;
 
       if (!candidateId || !testId) {
-        return res.status(400).json({ message: "Error, all params are required" });
+        return res.status(400).json({ message: 'Error, all params are required' });
       }
 
       try {
         const test = await Test.findById(testId) as ExtendedTest;
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const categories = test.categories.map(cat => ({ categoryId: cat.categoryId }));
@@ -653,7 +650,7 @@ class ExamsRouter extends EnduranceRouter {
           candidateId,
           testId,
           categories,
-          state: "pending",
+          state: 'pending',
           invitationDate: Date.now()
         });
         await newResult.save();
@@ -661,7 +658,7 @@ class ExamsRouter extends EnduranceRouter {
         // Récupérer l'email du candidat
         const candidate = await Candidate.findById(candidateId);
         if (!candidate) {
-          return res.status(404).json({ message: "Candidate not found" });
+          return res.status(404).json({ message: 'Candidate not found' });
         }
         const email = candidate.email;
 
@@ -681,11 +678,11 @@ class ExamsRouter extends EnduranceRouter {
           emailUser,
           emailPassword,
           data: {
-            testLink,
+            testLink
           }
         });
 
-        res.status(201).json({ message: "result created with sucess", data: newResult });
+        res.status(201).json({ message: 'result created with sucess', data: newResult });
       } catch (err) {
         console.error('error when creating result : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -699,12 +696,12 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         const test = await Test.findById(result.testId);
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const questionIndex = test.questions.indexOf(idCurrentQuestion);
@@ -728,12 +725,12 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         const test = await Test.findById(result.testId);
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const questionIndex = test.questions.indexOf(idCurrentQuestion);
@@ -757,7 +754,7 @@ class ExamsRouter extends EnduranceRouter {
         const question = await TestQuestion.findById(questionId);
 
         if (!question) {
-          return res.status(404).json({ message: "not found" });
+          return res.status(404).json({ message: 'not found' });
         }
 
         res.status(200).json({ data: question });
@@ -775,16 +772,16 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id) as ExtendedResult;
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         const test = await Test.findById(result.testId) as ExtendedTest;
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         if (!result.responses) {
-          result.state = "inProgress";
+          result.state = 'inProgress';
           result.responses = [];
         }
 
@@ -792,7 +789,7 @@ class ExamsRouter extends EnduranceRouter {
           questionId: idCurrentQuestion,
           response: candidateResponse,
           score: 0,
-          comment: " "
+          comment: ' '
         });
 
         await result.save();
@@ -801,7 +798,7 @@ class ExamsRouter extends EnduranceRouter {
 
         if (questionIndex === test.questions.length - 1) {
           emitter.emit(eventTypes.CORRECT_TEST, result);
-          result.state = "finish";
+          result.state = 'finish';
           await result.save();
         }
 
@@ -819,10 +816,10 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
         emitter.emit(eventTypes.CORRECT_TEST, result);
-        res.status(200).json({ message: "Result in correction" });
+        res.status(200).json({ message: 'Result in correction' });
       } catch (err) {
         console.error('error when correcting result : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -836,10 +833,10 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id) as ExtendedResult;
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
-        result.state = "finish";
+        result.state = 'finish';
         let finalscore = 0;
 
         for (const response of result.responses) {
@@ -847,7 +844,7 @@ class ExamsRouter extends EnduranceRouter {
           if (!question) continue;
 
           const score = await generateLiveMessage(
-            "correctQuestion",
+            'correctQuestion',
             {
               question: {
                 _id: question._id.toString(),
@@ -888,12 +885,12 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(resultId);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         const test = await Test.findById(result.testId);
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         let maxScore = 0;
@@ -918,7 +915,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(id);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         res.status(200).json({ data: result.score });
@@ -934,13 +931,13 @@ class ExamsRouter extends EnduranceRouter {
       const { numberOfQuestions, category } = req.body;
 
       if (!numberOfQuestions || numberOfQuestions <= 0) {
-        return res.status(400).json({ message: "Le nombre de questions doit être positif" });
+        return res.status(400).json({ message: 'Le nombre de questions doit être positif' });
       }
 
       try {
         const test = await Test.findById(id) as ExtendedTest;
         if (!test) {
-          return res.status(404).json({ message: "Test non trouvé" });
+          return res.status(404).json({ message: 'Test non trouvé' });
         }
 
         let categoriesToUse: { categoryId: string, expertiseLevel: string }[] = [];
@@ -961,7 +958,7 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         if (categoriesToUse.length === 0) {
-          return res.status(400).json({ message: "Aucune catégorie disponible pour générer des questions" });
+          return res.status(400).json({ message: 'Aucune catégorie disponible pour générer des questions' });
         }
 
         const questionsPerCategory = Math.ceil(numberOfQuestions / categoriesToUse.length);
@@ -976,7 +973,7 @@ class ExamsRouter extends EnduranceRouter {
 
           for (let i = 0; i < questionsPerCategory; i++) {
             const generatedQuestion = await generateLiveMessage(
-              "createQuestion",
+              'createQuestion',
               {
                 job: test.targetJob,
                 seniority: test.seniorityLevel,
@@ -995,7 +992,7 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         await test.save();
-        res.status(200).json({ message: "Questions générées avec succès", questions: generatedQuestions, test });
+        res.status(200).json({ message: 'Questions générées avec succès', questions: generatedQuestions, test });
       } catch (err) {
         console.error('Erreur lors de la génération des questions : ', err);
         res.status(500).json({ message: 'Erreur interne du serveur' });
@@ -1014,7 +1011,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const test = await Test.findById(testId);
         if (!test) {
-          return res.status(404).json({ message: "Test non trouvé" });
+          return res.status(404).json({ message: 'Test non trouvé' });
         }
 
         // Construction de la requête
@@ -1064,11 +1061,13 @@ class ExamsRouter extends EnduranceRouter {
           const candidate = candidatesMap.get(result.candidateId.toString());
           return {
             ...result.toObject(),
-            candidate: candidate ? {
+            candidate: candidate
+? {
               firstName: candidate.firstName,
               lastName: candidate.lastName,
               email: candidate.email
-            } : null,
+            }
+: null,
             maxScore
           };
         });
@@ -1099,19 +1098,19 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const result = await TestResult.findById(resultId);
         if (!result) {
-          return res.status(404).json({ message: "Result not found" });
+          return res.status(404).json({ message: 'Result not found' });
         }
 
         // Récupérer l'email du candidat
         const candidate = await Candidate.findById(result.candidateId);
         if (!candidate) {
-          return res.status(404).json({ message: "Candidate not found" });
+          return res.status(404).json({ message: 'Candidate not found' });
         }
 
         // Récupérer les informations du test
         const test = await Test.findById(result.testId);
         if (!test) {
-          return res.status(404).json({ message: "Test not found" });
+          return res.status(404).json({ message: 'Test not found' });
         }
 
         const email = candidate.email;
@@ -1138,7 +1137,7 @@ class ExamsRouter extends EnduranceRouter {
         result.set('invitationDate', new Date());
         await result.save();
 
-        res.status(200).json({ message: "Invitation email sent successfully" });
+        res.status(200).json({ message: 'Invitation email sent successfully' });
       } catch (err) {
         console.error('Error when resending invitation : ', err);
         res.status(500).json({ message: 'Internal server error' });
