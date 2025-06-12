@@ -1,9 +1,7 @@
 import { enduranceListener, enduranceEventTypes } from 'endurance-core';
 import TestQuestion from '../models/test-question.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
-import { Document } from 'mongoose';
-import TestResult from '../models/test-result.model.js';
-import { TestState } from '../models/test-result.model.js';
+import TestResult, { TestState } from '../models/test-result.model.js';
 
 interface CorrectionResult {
   score: number;
@@ -25,15 +23,15 @@ interface CorrectTestOptions {
 
 async function correctTest(options: CorrectTestOptions): Promise<void> {
   console.log('Correcting test', { options });
-  if (!options.testId) throw new Error("TestId is required");
-  if (!options.responses) throw new Error("Responses are required");
-  if (!options.state) throw new Error("State is required");
+  if (!options.testId) throw new Error('TestId is required');
+  if (!options.responses) throw new Error('Responses are required');
+  if (!options.state) throw new Error('State is required');
 
   try {
     // Récupérer le résultat de test
     const result = await TestResult.findById(options._id);
     if (!result) {
-      throw new Error("Test result not found");
+      throw new Error('Test result not found');
     }
 
     let finalscore = 0;
@@ -50,7 +48,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
       }
 
       const scoreResponse = await generateLiveMessage(
-        "correctQuestion",
+        'correctQuestion',
         {
           question: {
             _id: question._id.toString(),
@@ -69,7 +67,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
         true
       );
 
-      console.log("Correction result:", { scoreResponse });
+      console.log('Correction result:', { scoreResponse });
       const parsedResult: CorrectionResult = JSON.parse(scoreResponse);
       finalscore += parsedResult.score;
       dbResponse.score = parsedResult.score;
