@@ -2,6 +2,9 @@
   "type": "module",
   "name": "@programisto/edrm-exams",
   "version": "0.1.4",
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "an api for online exams",
   "main": "app.js",
   "scripts": {
