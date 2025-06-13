@@ -65,14 +65,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/programisto-labs/endurance-template.git"
+    "url": "git+https://github.com/programisto-labs/edrm-exams.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/programisto-labs/endurance-template/issues"
+    "url": "https://github.com/programisto-labs/edrm-exams/issues"
   },
-  "homepage": "https://github.com/programisto-labs/endurance-template#readme",
+  "homepage": "https://github.com/programisto-labs/edrm-exams#readme",
   "files": [
     "dist",
     "README.md"
