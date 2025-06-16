@@ -1,4 +1,4 @@
-import { enduranceListener, enduranceEventTypes } from 'endurance-core';
+import { enduranceListener, enduranceEventTypes } from '@programisto/endurance-core';
 import TestQuestion from '../models/test-question.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import TestResult, { TestState } from '../models/test-result.model.js';

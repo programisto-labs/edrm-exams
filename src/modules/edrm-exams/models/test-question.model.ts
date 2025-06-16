@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core';
 
 enum QuestionType {
     // eslint-disable-next-line no-unused-vars

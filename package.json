@@ -19,9 +19,7 @@
   "dependencies": {
     "aws-sdk": "^2.1692.0",
     "debug": "^4.3.7",
-    "edrm-mailer": "^0.4.5",
-    "edrm-user": "^0.4.9",
-    "endurance-core": "^0.4.25",
+    "@programisto/endurance-core": "^0.5.6",
     "fs": "^0.0.1-security",
     "http": "^0.0.1-security",
     "jsonwebtoken": "^9.0.2",

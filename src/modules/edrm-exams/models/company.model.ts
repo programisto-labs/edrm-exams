@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType } from 'endurance-core';
+import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core';
 
 @EnduranceModelType.modelOptions({
     options: {

@@ -1,4 +1,4 @@
-import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from 'endurance-core';
+import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance-core';
 import CandidateModel from '../models/candidate.models.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
