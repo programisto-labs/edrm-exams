@@ -1,3 +1,10 @@
+# [0.2.0](https://github.com/programisto-labs/edrm-exams/compare/v0.1.6...v0.2.0) (2025-07-25)
+
+
+### Features
+
+* bump core ([fd36565](https://github.com/programisto-labs/edrm-exams/commit/fd3656552c59684ae44c16f221eb7760837fe317))
+
 ## [0.1.6](https://github.com/programisto-labs/edrm-exams/compare/v0.1.5...v0.1.6) (2025-06-16)
 
 
