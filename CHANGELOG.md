@@ -1,3 +1,10 @@
+## [0.2.2](https://github.com/programisto-labs/edrm-exams/compare/v0.2.1...v0.2.2) (2025-08-12)
+
+
+### Bug Fixes
+
+* overlaping schema user ([21e891b](https://github.com/programisto-labs/edrm-exams/commit/21e891b844f2c275ce0cc7f9557b32219822e607))
+
 ## [0.2.1](https://github.com/programisto-labs/edrm-exams/compare/v0.2.0...v0.2.1) (2025-07-30)
 
 
