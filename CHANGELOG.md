@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/programisto-labs/edrm-exams/compare/v0.2.0...v0.2.1) (2025-07-30)
+
+
+### Bug Fixes
+
+* fix www.ts for autonomous start ([676c0b7](https://github.com/programisto-labs/edrm-exams/commit/676c0b75171453451dfbf1c3d76d310e9b1b535a))
+
 # [0.2.0](https://github.com/programisto-labs/edrm-exams/compare/v0.1.6...v0.2.0) (2025-07-25)
 
 
