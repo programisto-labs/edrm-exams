@@ -11,11 +11,20 @@ enum UserRole {
 }
 
 @EnduranceModelType.modelOptions({
+    schemaOptions: {
+        collection: 'users',
+        timestamps: true,
+        toObject: { virtuals: true },
+        toJSON: { virtuals: true },
+        _id: true,
+        validateBeforeSave: false,
+        strict: false
+    },
     options: {
         allowMixed: EnduranceModelType.Severity.ALLOW
     }
 })
-class User extends EnduranceSchema {
+class UserExam extends EnduranceSchema {
     @EnduranceModelType.prop({ required: true })
     public firstName!: string;
 
@@ -35,9 +44,9 @@ class User extends EnduranceSchema {
     public companyId?: typeof Company;
 
     public static getModel() {
-        return UserModel;
+        return UserExamModel;
     }
 }
 
-const UserModel = EnduranceModelType.getModelForClass(User);
-export default UserModel;
+const UserExamModel = EnduranceModelType.getModelForClass(UserExam);
+export default UserExamModel;

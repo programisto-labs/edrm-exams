@@ -1,6 +1,6 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions } from '@programisto/endurance-core';
 import Company from '../models/company.model.js';
-import User from '../models/user.model.js';
+import UserExam from '../models/user.model.js';
 
 interface CompanyData {
     name: string;
@@ -101,7 +101,7 @@ class CompanyRouter extends EnduranceRouter {
         this.get('/numberOfUser/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
             try {
-                const users = await User.find({ companyId: id });
+                const users = await UserExam.find({ companyId: id });
                 const numberOfUser = users.length;
                 res.status(200).json({ data: numberOfUser });
             } catch (err) {

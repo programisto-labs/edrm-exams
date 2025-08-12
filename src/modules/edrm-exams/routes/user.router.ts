@@ -1,5 +1,5 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions } from '@programisto/endurance-core';
-import User from '../models/user.model.js';
+import UserExam from '../models/user.model.js';
 
 class UserRouter extends EnduranceRouter {
     constructor() {
@@ -15,7 +15,7 @@ class UserRouter extends EnduranceRouter {
         // Lister tous les utilisateurs
         this.get('/', authenticatedOptions, async (req: any, res: any) => {
             try {
-                const users = await User.find();
+                const users = await UserExam.find();
                 res.status(200).json({ array: users });
             } catch (err) {
                 console.error('Error when retrieving users: ', err);
@@ -32,7 +32,7 @@ class UserRouter extends EnduranceRouter {
             }
 
             try {
-                const newUser = new User({ firstName, lastName, email, companyId });
+                const newUser = new UserExam({ firstName, lastName, email, companyId });
                 await newUser.save();
                 res.status(201).json({ message: 'user created with sucess', user: newUser });
             } catch (err) {
@@ -46,7 +46,7 @@ class UserRouter extends EnduranceRouter {
             const { id } = req.params;
 
             try {
-                const user = await User.findById(id);
+                const user = await UserExam.findById(id);
 
                 if (!user) {
                     return res.status(404).json({ message: 'no user founded with this id' });
@@ -65,7 +65,7 @@ class UserRouter extends EnduranceRouter {
             const { firstName, lastName, email, companyId } = req.body;
 
             try {
-                const user = await User.findById(id);
+                const user = await UserExam.findById(id);
                 if (!user) {
                     return res.status(404).json({ message: 'no user founded with this id' });
                 }
@@ -77,8 +77,8 @@ class UserRouter extends EnduranceRouter {
                     companyId: companyId || user.companyId
                 };
 
-                await User.findByIdAndUpdate(id, updateData, { new: true });
-                const updatedUser = await User.findById(id);
+                await UserExam.findByIdAndUpdate(id, updateData, { new: true });
+                const updatedUser = await UserExam.findById(id);
 
                 res.status(200).json({ message: 'user updated', user: updatedUser });
             } catch (err) {
@@ -92,7 +92,7 @@ class UserRouter extends EnduranceRouter {
             const { id } = req.params;
 
             try {
-                const user = await User.findByIdAndDelete(id);
+                const user = await UserExam.findByIdAndDelete(id);
                 if (!user) {
                     return res.status(404).json({ message: 'no user founded with this id' });
                 }
