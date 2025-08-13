@@ -666,8 +666,8 @@ class ExamsRouter extends EnduranceRouter {
         const testLink = process.env.TEST_INVITATION_LINK || '';
 
         // Récupérer les credentials d'envoi
-        const emailUser = process.env.EMAIL_USER_TURING;
-        const emailPassword = process.env.EMAIL_PASSWORD_TURING;
+        const emailUser = process.env.EMAIL_USER;
+        const emailPassword = process.env.EMAIL_PASSWORD;
 
         // Envoyer l'email via l'event emitter
         await emitter.emit(eventTypes.SEND_EMAIL, {
@@ -1137,8 +1137,8 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         const email = candidate.email;
-        const emailUser = process.env.EMAIL_USER_TURING;
-        const emailPassword = process.env.EMAIL_PASSWORD_TURING;
+        const emailUser = process.env.EMAIL_USER;
+        const emailPassword = process.env.EMAIL_PASSWORD;
 
         // Construire le lien d'invitation
         const testLink = process.env.TEST_INVITATION_LINK || '';
