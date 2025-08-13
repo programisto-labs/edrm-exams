@@ -671,10 +671,9 @@ class ExamsRouter extends EnduranceRouter {
 
         // Envoyer l'email via l'event emitter
         await emitter.emit(eventTypes.SEND_EMAIL, {
-          template: 'test-invitation-turing',
+          template: 'test-invitation',
           to: email,
           from: emailUser,
-          subject: 'Vous êtes invité à passer un test technique - École de Turing',
           emailUser,
           emailPassword,
           data: {
@@ -984,15 +983,39 @@ class ExamsRouter extends EnduranceRouter {
               },
               true
             );
-            const question = new TestQuestion(JSON.parse(generatedQuestion));
-            await question.save();
-            generatedQuestions.push(question);
-            test.questions.push({ questionId: question._id, order: test.questions.length });
+
+            // Vérifier si la réponse est un JSON valide
+            if (generatedQuestion === 'Brain freezed, I cannot generate a live message right now.') {
+              console.error('Échec de génération de question pour la catégorie:', categoryDoc.name);
+              continue; // Passer à la question suivante
+            }
+
+            try {
+              const question = new TestQuestion(JSON.parse(generatedQuestion));
+              await question.save();
+              generatedQuestions.push(question);
+              test.questions.push({ questionId: question._id, order: test.questions.length });
+            } catch (parseError) {
+              console.error('Erreur lors du parsing de la question générée:', parseError);
+              console.error('Réponse reçue:', generatedQuestion);
+              continue; // Passer à la question suivante
+            }
           }
         }
 
+        // Vérifier qu'au moins une question a été générée
+        if (generatedQuestions.length === 0) {
+          return res.status(500).json({
+            message: 'Aucune question n\'a pu être générée. Veuillez réessayer plus tard.'
+          });
+        }
+
         await test.save();
-        res.status(200).json({ message: 'Questions générées avec succès', questions: generatedQuestions, test });
+        res.status(200).json({
+          message: `${generatedQuestions.length} question(s) générée(s) avec succès`,
+          questions: generatedQuestions,
+          test
+        });
       } catch (err) {
         console.error('Erreur lors de la génération des questions : ', err);
         res.status(500).json({ message: 'Erreur interne du serveur' });
@@ -1062,12 +1085,12 @@ class ExamsRouter extends EnduranceRouter {
           return {
             ...result.toObject(),
             candidate: candidate
-? {
-              firstName: candidate.firstName,
-              lastName: candidate.lastName,
-              email: candidate.email
-            }
-: null,
+              ? {
+                firstName: candidate.firstName,
+                lastName: candidate.lastName,
+                email: candidate.email
+              }
+              : null,
             maxScore
           };
         });
@@ -1122,10 +1145,9 @@ class ExamsRouter extends EnduranceRouter {
 
         // Envoyer l'email via l'event emitter
         await emitter.emit(eventTypes.SEND_EMAIL, {
-          template: 'test-invitation-turing',
+          template: 'test-invitation',
           to: email,
           from: emailUser,
-          subject: 'Vous êtes invité à passer un test technique - École de Turing',
           emailUser,
           emailPassword,
           data: {

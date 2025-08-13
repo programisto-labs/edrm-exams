@@ -169,11 +169,11 @@ class CandidateRouter extends EnduranceRouter {
                 // Envoyer l'email avec le lien magique
                 const magicLink = `${process.env.CANDIDATE_MAGIC_LINK}${token}`;
                 await enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
-                    template: 'candidate-magic-link-turing',
+                    template: 'candidate-magic-link',
                     to: email,
-                    from: process.env.EMAIL_USER_TURING,
-                    emailUser: process.env.EMAIL_USER_TURING,
-                    emailPassword: process.env.EMAIL_PASSWORD_TURING,
+                    from: process.env.EMAIL_USER,
+                    emailUser: process.env.EMAIL_USER,
+                    emailPassword: process.env.EMAIL_PASSWORD,
                     data: {
                         magicLink
                     }
@@ -321,14 +321,14 @@ class CandidateRouter extends EnduranceRouter {
                     return {
                         ...result,
                         test: test
-? {
-                            title: test.title,
-                            description: test.description,
-                            targetJob: test.targetJob,
-                            seniorityLevel: test.seniorityLevel,
-                            categories: categoriesWithNames
-                        }
-: null
+                            ? {
+                                title: test.title,
+                                description: test.description,
+                                targetJob: test.targetJob,
+                                seniorityLevel: test.seniorityLevel,
+                                categories: categoriesWithNames
+                            }
+                            : null
                     };
                 });
 
