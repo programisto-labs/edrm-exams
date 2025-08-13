@@ -1,3 +1,10 @@
+## [0.2.4](https://github.com/programisto-labs/edrm-exams/compare/v0.2.3...v0.2.4) (2025-08-13)
+
+
+### Bug Fixes
+
+* env vars ([985f073](https://github.com/programisto-labs/edrm-exams/commit/985f0738c3a8c4626ad7f371ebf740686412a5ab))
+
 ## [0.2.3](https://github.com/programisto-labs/edrm-exams/compare/v0.2.2...v0.2.3) (2025-08-13)
 
 
