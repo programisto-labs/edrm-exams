@@ -1,3 +1,10 @@
+## [0.2.3](https://github.com/programisto-labs/edrm-exams/compare/v0.2.2...v0.2.3) (2025-08-13)
+
+
+### Bug Fixes
+
+* fix email user and pwd for email ([8c3f61d](https://github.com/programisto-labs/edrm-exams/commit/8c3f61df47c365067579ccd84dfdd916eeab9d70))
+
 ## [0.2.2](https://github.com/programisto-labs/edrm-exams/compare/v0.2.1...v0.2.2) (2025-08-12)
 
 
