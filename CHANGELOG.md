@@ -1,3 +1,10 @@
+## [0.2.5](https://github.com/programisto-labs/edrm-exams/compare/v0.2.4...v0.2.5) (2025-08-14)
+
+
+### Bug Fixes
+
+* resolve ESLint warnings for ExperienceLevel enum in candidate model ([8487f37](https://github.com/programisto-labs/edrm-exams/commit/8487f3742af0601c845fc36fbec339d82b2963c5))
+
 ## [0.2.4](https://github.com/programisto-labs/edrm-exams/compare/v0.2.3...v0.2.4) (2025-08-13)
 
 
