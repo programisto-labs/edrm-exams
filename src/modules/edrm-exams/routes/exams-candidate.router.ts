@@ -1,13 +1,24 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance-core';
 import CandidateModel from '../models/candidate.models.js';
+import ContactModel from '../models/contact.model.js';
 import TestResult from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
 import jwt from 'jsonwebtoken';
+import { Types } from 'mongoose';
 
 interface CandidateData {
-    firstName: string;
-    lastName: string;
+    // Informations de contact
+    firstname: string;
+    lastname: string;
     email: string;
+    phone?: string;
+    linkedin?: string;
+    city: string;
+
+    // Informations du candidat
+    experienceLevel?: string;
+    yearsOfExperience?: number;
+    skills: string[];
 }
 
 class CandidateRouter extends EnduranceRouter {
@@ -23,18 +34,88 @@ class CandidateRouter extends EnduranceRouter {
 
         // Créer un nouveau candidat
         this.post('/', authenticatedOptions, async (req: any, res: any) => {
-            const { firstName, lastName, email } = req.body as CandidateData;
+            const { firstname, lastname, email, phone, linkedin, city, experienceLevel, yearsOfExperience, skills } = req.body as CandidateData;
             console.log(req.body);
-            console.log(firstName, lastName, email);
 
-            if (!firstName || !lastName || !email) {
-                return res.status(400).json({ message: 'Error, firstName, lastName and email are required' });
+            if (!firstname || !lastname || !email || !city || !skills || skills.length === 0) {
+                return res.status(400).json({ message: 'Error, firstname, lastname, email, city and skills are required' });
             }
 
             try {
-                const newCandidate = new CandidateModel({ firstName, lastName, email });
+                // Vérifier si un contact existe déjà avec cette adresse email
+                const existingContact = await ContactModel.findOne({ email });
+
+                if (existingContact) {
+                    // Vérifier si un candidat existe déjà avec ce contact
+                    const existingCandidate = await CandidateModel.findOne({ contact: existingContact._id });
+
+                    if (existingCandidate) {
+                        // Contact et candidat existent déjà
+                        return res.status(200).json({
+                            message: 'Contact et candidat existent déjà avec cette adresse email',
+                            status: 'EXISTING',
+                            candidate: {
+                                ...existingCandidate.toObject(),
+                                contact: existingContact.toObject()
+                            }
+                        });
+                    } else {
+                        // Le contact existe mais pas de candidat, créer le candidat
+                        const newCandidate = new CandidateModel({
+                            contact: existingContact._id,
+                            experienceLevel: experienceLevel || 'JUNIOR',
+                            yearsOfExperience: yearsOfExperience || 0,
+                            skills
+                        });
+                        await newCandidate.save();
+
+                        return res.status(201).json({
+                            message: 'Candidat créé avec succès en utilisant le contact existant',
+                            status: 'CREATED_WITH_EXISTING_CONTACT',
+                            candidate: {
+                                ...newCandidate.toObject(),
+                                contact: existingContact.toObject()
+                            }
+                        });
+                    }
+                }
+
+                // Aucun contact existant, créer le contact et le candidat
+                const newContact = new ContactModel({
+                    firstname,
+                    lastname,
+                    email,
+                    phone,
+                    linkedin,
+                    city
+                });
+                await newContact.save();
+
+                // Créer ensuite le candidat avec la référence au contact
+                const newCandidate = new CandidateModel({
+                    contact: newContact._id,
+                    experienceLevel: experienceLevel || 'JUNIOR',
+                    yearsOfExperience: yearsOfExperience || 0,
+                    skills
+                });
                 await newCandidate.save();
-                res.status(201).json({ message: 'candidate created with success', candidate: newCandidate });
+
+                // Récupérer le candidat et le contact séparément
+                const candidate = await CandidateModel.findById(newCandidate._id);
+                const contact = await ContactModel.findById(newContact._id);
+
+                if (!candidate || !contact) {
+                    return res.status(500).json({ message: 'Erreur lors de la récupération des données' });
+                }
+
+                res.status(201).json({
+                    message: 'Contact et candidat créés avec succès',
+                    status: 'CREATED',
+                    candidate: {
+                        ...candidate.toObject(),
+                        contact: contact.toObject()
+                    }
+                });
             } catch (err) {
                 console.error('error when creating candidate : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -48,41 +129,86 @@ class CandidateRouter extends EnduranceRouter {
                 const limit = parseInt(req.query.limit as string) || 10;
                 const skip = (page - 1) * limit;
                 const search = req.query.search as string || '';
-                const sortBy = req.query.sortBy as string || 'lastName';
+                const sortBy = req.query.sortBy as string || 'lastname';
                 const sortOrder = req.query.sortOrder as string || 'asc';
 
-                // Construction de la requête de recherche
-                const query: any = {};
+                let contactIds: Types.ObjectId[] = [];
+                let total = 0;
 
-                // Recherche sur firstName, lastName et email
                 if (search) {
-                    query.$or = [
-                        { firstName: { $regex: search, $options: 'i' } },
-                        { lastName: { $regex: search, $options: 'i' } },
-                        { email: { $regex: search, $options: 'i' } }
-                    ];
+                    // Recherche dans les contacts
+                    const contactQuery = {
+                        $or: [
+                            { firstname: { $regex: search, $options: 'i' } },
+                            { lastname: { $regex: search, $options: 'i' } },
+                            { email: { $regex: search, $options: 'i' } }
+                        ]
+                    };
+
+                    const contacts = await ContactModel.find(contactQuery);
+                    contactIds = contacts.map(contact => contact._id);
+
+                    // Compter les candidats avec ces contacts
+                    total = await CandidateModel.countDocuments({ contact: { $in: contactIds } });
+                } else {
+                    // Pas de recherche, compter tous les candidats
+                    total = await CandidateModel.countDocuments();
                 }
 
-                // Construction du tri
-                const allowedSortFields = ['firstName', 'lastName', 'email'];
-                const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'lastName';
-                const sortOptions: Record<string, 1 | -1> = {
-                    [sortField]: sortOrder === 'asc' ? 1 : -1
-                };
+                // Construction du tri pour les contacts
+                const allowedSortFields = ['firstname', 'lastname', 'email'];
+                const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'lastname';
 
-                const [candidates, total] = await Promise.all([
-                    CandidateModel.find(query)
-                        .sort(sortOptions)
+                let candidates;
+                if (search && contactIds.length > 0) {
+                    // Récupérer les candidats avec les contacts trouvés
+                    candidates = await CandidateModel.find({ contact: { $in: contactIds } })
                         .skip(skip)
                         .limit(limit)
-                        .exec(),
-                    CandidateModel.countDocuments(query)
-                ]);
+                        .exec();
+                } else if (!search) {
+                    // Récupérer tous les candidats
+                    candidates = await CandidateModel.find()
+                        .skip(skip)
+                        .limit(limit)
+                        .exec();
+                } else {
+                    // Aucun contact trouvé pour la recherche
+                    candidates = [];
+                }
+
+                // Récupérer les contacts pour tous les candidats
+                const candidateContactIds = candidates.map(candidate => candidate.contact);
+                const contacts = await ContactModel.find({ _id: { $in: candidateContactIds } });
+                const contactsMap = new Map(contacts.map(contact => [contact._id.toString(), contact]));
+
+                // Combiner les candidats avec leurs contacts et trier
+                const candidatesWithContacts = candidates.map(candidate => {
+                    const contact = contactsMap.get(candidate.contact.toString());
+                    return {
+                        ...candidate.toObject(),
+                        contact: contact ? contact.toObject() : null
+                    };
+                });
+
+                // Trier les résultats côté serveur si nécessaire
+                if (sortField && candidatesWithContacts.length > 0) {
+                    candidatesWithContacts.sort((a, b) => {
+                        const aValue = a.contact ? a.contact[sortField] : '';
+                        const bValue = b.contact ? b.contact[sortField] : '';
+
+                        if (sortOrder === 'asc') {
+                            return aValue.localeCompare(bValue);
+                        } else {
+                            return bValue.localeCompare(aValue);
+                        }
+                    });
+                }
 
                 const totalPages = Math.ceil(total / limit);
 
                 return res.json({
-                    data: candidates,
+                    data: candidatesWithContacts,
                     pagination: {
                         currentPage: page,
                         totalPages,
@@ -109,7 +235,20 @@ class CandidateRouter extends EnduranceRouter {
                     return res.status(404).json({ message: 'no candidate found with this id' });
                 }
 
-                res.status(200).json({ message: 'candidate : ', data: candidate });
+                // Récupérer le contact associé
+                const contact = await ContactModel.findById(candidate.contact);
+
+                if (!contact) {
+                    return res.status(404).json({ message: 'contact not found for this candidate' });
+                }
+
+                res.status(200).json({
+                    message: 'candidate : ',
+                    data: {
+                        ...candidate.toObject(),
+                        contact: contact.toObject()
+                    }
+                });
             } catch (err) {
                 console.error('error when getting candidate : ', err);
                 res.status(500).json({ message: 'Internal server error' });
@@ -121,14 +260,23 @@ class CandidateRouter extends EnduranceRouter {
             try {
                 const email = req.params.email;
 
-                const candidate = await CandidateModel.findOne({ email });
+                // Chercher d'abord le contact par email
+                const contact = await ContactModel.findOne({ email });
+
+                if (!contact) {
+                    return res.status(404).json({ message: 'Contact non trouvé' });
+                }
+
+                // Puis chercher le candidat avec ce contact
+                const candidate = await CandidateModel.findOne({ contact: contact._id });
 
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
 
                 return res.json({
-                    ...candidate.toObject()
+                    ...candidate.toObject(),
+                    contact: contact.toObject()
                 });
             } catch (error) {
                 console.error('Erreur lors de la récupération du détail du candidat:', error);
@@ -145,7 +293,14 @@ class CandidateRouter extends EnduranceRouter {
                     return res.status(400).json({ message: 'Email requis' });
                 }
 
-                const candidate = await CandidateModel.findOne({ email });
+                // Chercher d'abord le contact par email
+                const contact = await ContactModel.findOne({ email });
+                if (!contact) {
+                    return res.status(404).json({ message: 'Contact non trouvé' });
+                }
+
+                // Puis chercher le candidat avec ce contact
+                const candidate = await CandidateModel.findOne({ contact: contact._id });
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
@@ -241,8 +396,7 @@ class CandidateRouter extends EnduranceRouter {
                     candidate: {
                         id: candidate._id,
                         email: decoded.email,
-                        firstName: candidate.firstName,
-                        lastName: candidate.lastName
+                        contact: candidate.contact
                     }
                 });
             } catch (error) {

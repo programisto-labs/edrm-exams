@@ -4,6 +4,7 @@ import TestQuestion from '../models/test-question.model.js';
 import TestResult from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
 import Candidate from '../models/candidate.models.js';
+import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import { Document, Types } from 'mongoose';
 
@@ -660,7 +661,13 @@ class ExamsRouter extends EnduranceRouter {
         if (!candidate) {
           return res.status(404).json({ message: 'Candidate not found' });
         }
-        const email = candidate.email;
+
+        // Récupérer le contact pour obtenir l'email
+        const contact = await ContactModel.findById(candidate.contact);
+        if (!contact) {
+          return res.status(404).json({ message: 'Contact not found' });
+        }
+        const email = contact.email;
 
         // Construire le lien d'invitation
         const testLink = process.env.TEST_INVITATION_LINK || '';
@@ -1080,20 +1087,30 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         // Combiner les résultats avec les données des candidats
-        const resultsWithCandidates = results.map(result => {
+        const resultsWithCandidates = await Promise.all(results.map(async result => {
           const candidate = candidatesMap.get(result.candidateId.toString());
+          if (!candidate) {
+            return {
+              ...result.toObject(),
+              candidate: null,
+              maxScore
+            };
+          }
+
+          // Récupérer le contact pour obtenir les informations personnelles
+          const contact = await ContactModel.findById(candidate.contact);
           return {
             ...result.toObject(),
-            candidate: candidate
+            candidate: contact
               ? {
-                firstName: candidate.firstName,
-                lastName: candidate.lastName,
-                email: candidate.email
+                firstName: contact.firstname,
+                lastName: contact.lastname,
+                email: contact.email
               }
               : null,
             maxScore
           };
-        });
+        }));
 
         const totalPages = Math.ceil(total / limit);
 
@@ -1124,10 +1141,16 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Result not found' });
         }
 
-        // Récupérer l'email du candidat
+        // Récupérer le candidat et son contact
         const candidate = await Candidate.findById(result.candidateId);
         if (!candidate) {
           return res.status(404).json({ message: 'Candidate not found' });
+        }
+
+        // Récupérer le contact pour obtenir l'email
+        const contact = await ContactModel.findById(candidate.contact);
+        if (!contact) {
+          return res.status(404).json({ message: 'Contact not found' });
         }
 
         // Récupérer les informations du test
@@ -1136,7 +1159,7 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Test not found' });
         }
 
-        const email = candidate.email;
+        const email = contact.email;
         const emailUser = process.env.EMAIL_USER;
         const emailPassword = process.env.EMAIL_PASSWORD;
 
