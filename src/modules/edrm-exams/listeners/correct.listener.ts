@@ -87,7 +87,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     // Forcer la sauvegarde des sous-documents responses
     result.markModified('responses');
 
-    let scorePercentage = (finalscore / maxScore) * 100;
+    const scorePercentage = (finalscore / maxScore) * 100;
 
     // Sauvegarder les modifications avec findByIdAndUpdate pour éviter les conflits de version
     await TestResult.findByIdAndUpdate(result._id, {
@@ -101,6 +101,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     const test = await TestModel.findById(result.testId);
 
     const candidate = await CandidateModel.findById(result.candidateId);
+
     if (candidate) {
       const contact = await ContactModel.findById(candidate.contact);
       if (contact) {
@@ -117,7 +118,6 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
         });
       }
     }
-
   } catch (err) {
     if (err instanceof Error) {
       console.error(`Error correcting test: ${err.message}`, { err });

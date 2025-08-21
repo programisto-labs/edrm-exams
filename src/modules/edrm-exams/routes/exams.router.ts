@@ -969,17 +969,27 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(400).json({ message: 'Aucune catégorie disponible pour générer des questions' });
         }
 
-        const questionsPerCategory = Math.ceil(numberOfQuestions / categoriesToUse.length);
         const generatedQuestions: Document[] = [];
+        let questionsGenerated = 0;
 
-        for (const categoryInfo of categoriesToUse) {
+        // Mélanger les catégories pour une répartition aléatoire
+        const shuffledCategories = [...categoriesToUse].sort(() => Math.random() - 0.5);
+
+        for (const categoryInfo of shuffledCategories) {
+          // Arrêter si on a déjà généré le nombre de questions demandé
+          if (questionsGenerated >= numberOfQuestions) break;
+
           const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
           if (!categoryDoc) continue;
 
           const otherQuestionsIds = test.questions.map(question => question.questionId);
           const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
-          for (let i = 0; i < questionsPerCategory; i++) {
+          // Calculer combien de questions générer pour cette catégorie
+          const remainingQuestions = numberOfQuestions - questionsGenerated;
+          const questionsForThisCategory = Math.min(remainingQuestions, 1); // Au maximum 1 question par catégorie
+
+          for (let i = 0; i < questionsForThisCategory; i++) {
             const generatedQuestion = await generateLiveMessage(
               'createQuestion',
               {
@@ -1004,6 +1014,7 @@ class ExamsRouter extends EnduranceRouter {
               await question.save();
               generatedQuestions.push(question);
               test.questions.push({ questionId: question._id, order: test.questions.length });
+              questionsGenerated++;
             } catch (parseError) {
               console.error('Erreur lors du parsing de la question générée:', parseError);
               console.error('Réponse reçue:', generatedQuestion);
