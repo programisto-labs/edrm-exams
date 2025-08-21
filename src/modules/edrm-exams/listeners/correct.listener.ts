@@ -87,7 +87,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     // Forcer la sauvegarde des sous-documents responses
     result.markModified('responses');
 
-    const scorePercentage = (finalscore / maxScore) * 100;
+    const scorePercentage = Math.ceil((finalscore / maxScore) * 100);
 
     // Sauvegarder les modifications avec findByIdAndUpdate pour éviter les conflits de version
     await TestResult.findByIdAndUpdate(result._id, {
