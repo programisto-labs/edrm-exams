@@ -1,7 +1,10 @@
-import { enduranceListener, enduranceEventTypes } from '@programisto/endurance-core';
+import { enduranceListener, enduranceEventTypes, enduranceEmitter } from '@programisto/endurance-core';
 import TestQuestion from '../models/test-question.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
+import CandidateModel from '../models/candidate.model.js';
+import ContactModel from '../models/contact.model.js';
+import TestModel from '../models/test.model.js';
 
 interface CorrectionResult {
   score: number;
@@ -22,7 +25,6 @@ interface CorrectTestOptions {
 }
 
 async function correctTest(options: CorrectTestOptions): Promise<void> {
-  console.log('Correcting test', { options });
   if (!options.testId) throw new Error('TestId is required');
   if (!options.responses) throw new Error('Responses are required');
   if (!options.state) throw new Error('State is required');
@@ -36,6 +38,8 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
 
     let finalscore = 0;
 
+    let maxScore = 0;
+
     // Pour chaque réponse enregistrée en base, on cherche la correction correspondante
     for (const dbResponse of result.responses) {
       const correction = options.responses.find(r => r.questionId.toString() === dbResponse.questionId.toString());
@@ -46,6 +50,8 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
         console.error('Question not found', { questionId: dbResponse.questionId });
         continue;
       }
+
+      maxScore += question.maxScore;
 
       const scoreResponse = await generateLiveMessage(
         'correctQuestion',
@@ -81,16 +87,37 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     // Forcer la sauvegarde des sous-documents responses
     result.markModified('responses');
 
+    let scorePercentage = (finalscore / maxScore) * 100;
+
     // Sauvegarder les modifications avec findByIdAndUpdate pour éviter les conflits de version
     await TestResult.findByIdAndUpdate(result._id, {
       $set: {
         responses: result.responses,
-        score: result.score,
+        score: scorePercentage,
         state: result.state
       }
     });
 
-    console.log('Test correction completed and saved', { finalScore: finalscore });
+    const test = await TestModel.findById(result.testId);
+
+    const candidate = await CandidateModel.findById(result.candidateId);
+    if (candidate) {
+      const contact = await ContactModel.findById(candidate.contact);
+      if (contact) {
+        enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
+          template: 'test-result',
+          to: contact.email,
+          data: {
+            firstname: contact.firstname,
+            lastname: contact.lastname,
+            score: result.score,
+            testName: test?.title || '',
+            testLink: process.env.TEST_INVITATION_LINK || ''
+          }
+        });
+      }
+    }
+
   } catch (err) {
     if (err instanceof Error) {
       console.error(`Error correcting test: ${err.message}`, { err });

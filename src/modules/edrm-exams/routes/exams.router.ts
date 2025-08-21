@@ -3,7 +3,7 @@ import Test from '../models/test.model.js';
 import TestQuestion from '../models/test-question.model.js';
 import TestResult from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
-import Candidate from '../models/candidate.models.js';
+import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import { Document, Types } from 'mongoose';
@@ -25,6 +25,7 @@ interface ExtendedTest extends Document {
   questions: TestQuestionRef[];
   invitationText?: string;
   testName: string;
+  title: string;
   targetJob: string;
   seniorityLevel: string;
 }
@@ -683,6 +684,8 @@ class ExamsRouter extends EnduranceRouter {
           emailUser,
           emailPassword,
           data: {
+            firstname: contact.firstname,
+            testName: test?.title || '',
             testLink
           }
         });

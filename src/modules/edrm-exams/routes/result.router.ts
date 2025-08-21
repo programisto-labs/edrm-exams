@@ -1,5 +1,5 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance-core';
-import CandidateModel from '../models/candidate.models.js';
+import CandidateModel from '../models/candidate.model.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
 
@@ -98,14 +98,14 @@ class ResultRouter extends EnduranceRouter {
                         testResultId: result._id,
                         maxScore,
                         test: test
-? {
-                            title: test.title,
-                            description: test.description,
-                            targetJob: test.targetJob,
-                            seniorityLevel: test.seniorityLevel,
-                            categories: categoriesWithNames
-                        }
-: null
+                            ? {
+                                title: test.title,
+                                description: test.description,
+                                targetJob: test.targetJob,
+                                seniorityLevel: test.seniorityLevel,
+                                categories: categoriesWithNames
+                            }
+                            : null
                     };
                 }));
 
