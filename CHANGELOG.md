@@ -1,3 +1,10 @@
+## [0.2.8](https://github.com/programisto-labs/edrm-exams/compare/v0.2.7...v0.2.8) (2025-08-21)
+
+
+### Bug Fixes
+
+* fix math ceil on score result ([25ce88e](https://github.com/programisto-labs/edrm-exams/commit/25ce88e94ca3ab7004e112b02ada2388163bac34))
+
 ## [0.2.7](https://github.com/programisto-labs/edrm-exams/compare/v0.2.6...v0.2.7) (2025-08-21)
 
 
