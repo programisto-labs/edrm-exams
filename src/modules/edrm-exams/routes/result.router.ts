@@ -153,6 +153,7 @@ class ResultRouter extends EnduranceRouter {
                 // Calculer la somme du temps de toutes les questions
                 const questions = await TestQuestion.find({ _id: { $in: (test.questions || []).map((q: any) => q.questionId) } }).lean();
                 const maxTime = questions.reduce((sum, q) => sum + (q.time || 0), 0);
+                const numberOfQuestions = questions.length;
 
                 // Construire la réponse sans les questions
                 const {
@@ -163,7 +164,8 @@ class ResultRouter extends EnduranceRouter {
                 return res.json({
                     ...testWithoutQuestions,
                     categories: categoriesWithNames,
-                    maxTime
+                    maxTime,
+                    numberOfQuestions
                 });
             } catch (err) {
                 console.error('Erreur lors de la récupération du test :', err);
@@ -268,12 +270,16 @@ class ResultRouter extends EnduranceRouter {
                 }
 
                 // Optionnel : vérifier que la question appartient bien au test de la session et n'a pas déjà été répondue
+                let test: any = null;
+                let questionPosition = -1;
+                let numberOfQuestions = 0;
+
                 if (sessionId) {
                     const result = await TestResult.findById(sessionId).lean();
                     if (!result) {
                         return res.status(404).json({ message: 'Session (résultat) non trouvée' });
                     }
-                    const test = await Test.findById(result.testId).lean();
+                    test = await Test.findById(result.testId).lean();
                     if (!test) {
                         return res.status(404).json({ message: 'Test non trouvé' });
                     }
@@ -286,9 +292,31 @@ class ResultRouter extends EnduranceRouter {
                     if (alreadyAnswered) {
                         return res.status(403).json({ message: 'Question déjà répondue pour cette session' });
                     }
+                } else {
+                    // Si pas de sessionId, on doit quand même récupérer le test pour avoir les infos
+                    // Chercher dans tous les tests pour trouver celui qui contient cette question
+                    const allTests = await Test.find({}).lean();
+                    for (const t of allTests) {
+                        const questionIds = (t.questions || []).map((q: any) => q.questionId?.toString());
+                        if (questionIds.includes(idQuestion)) {
+                            test = t;
+                            break;
+                        }
+                    }
                 }
 
-                return res.json({ question });
+                // Calculer la position de la question et le nombre total de questions
+                if (test) {
+                    numberOfQuestions = test.questions?.length || 0;
+                    const questionIndex = test.questions?.findIndex((q: any) => q.questionId?.toString() === idQuestion);
+                    questionPosition = questionIndex !== -1 ? questionIndex + 1 : -1; // +1 car les positions commencent à 1
+                }
+
+                return res.json({
+                    question,
+                    numberOfQuestions,
+                    questionPosition
+                });
             } catch (err) {
                 console.error('Erreur lors de la récupération de la question :', err);
                 res.status(500).json({ message: 'Erreur interne du serveur' });
