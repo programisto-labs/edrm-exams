@@ -52,7 +52,6 @@ class ExamsRouter extends EnduranceRouter {
       requireAuth: false,
       permissions: []
     };
-
     // Créer une catégorie
     this.post('/categories', authenticatedOptions, async (req: any, res: any) => {
       const { name } = req.body;
@@ -1037,6 +1036,8 @@ class ExamsRouter extends EnduranceRouter {
       const skip = (page - 1) * limit;
       const search = req.query.search as string || '';
       const state = req.query.state as string || 'all';
+      const sortBy = req.query.sortBy as string || 'invitationDate';
+      const sortOrder = req.query.sortOrder as string || 'desc';
 
       try {
         const test = await Test.findById(testId);
@@ -1051,32 +1052,94 @@ class ExamsRouter extends EnduranceRouter {
           query.state = state;
         }
 
-        // Recherche sur les candidats
+        // Recherche sur les candidats via leurs contacts
         if (search) {
-          const candidates = await Candidate.find({
+          // D'abord, rechercher dans les contacts
+          const contacts = await ContactModel.find({
             $or: [
-              { firstName: { $regex: search, $options: 'i' } },
-              { lastName: { $regex: search, $options: 'i' } },
+              { firstname: { $regex: search, $options: 'i' } },
+              { lastname: { $regex: search, $options: 'i' } },
               { email: { $regex: search, $options: 'i' } }
             ]
           });
+
+          // Ensuite, récupérer les candidats qui ont ces contacts
+          const contactIds = contacts.map(c => c._id);
+          const candidates = await Candidate.find({
+            contact: { $in: contactIds }
+          });
+
           const candidateIds = candidates.map(c => c._id);
           query.candidateId = { $in: candidateIds };
         }
 
-        const [results, total] = await Promise.all([
-          TestResult.find(query)
-            .sort({ invitationDate: -1 })
-            .skip(skip)
-            .limit(limit)
-            .exec(),
-          TestResult.countDocuments(query)
-        ]);
+        // Déterminer l'ordre de tri
+        const sortDirection = sortOrder === 'asc' ? 1 : -1;
 
-        // Récupérer les données des candidats
-        const candidateIds = results.map(result => result.candidateId);
-        const candidates = await Candidate.find({ _id: { $in: candidateIds } });
-        const candidatesMap = new Map(candidates.map(c => [c._id.toString(), c]));
+        // Si on trie par lastName, on récupère tous les résultats puis on trie après
+        // Sinon on peut trier directement dans la requête MongoDB
+        let results, total;
+
+        if (sortBy === 'lastName') {
+          // Récupérer tous les résultats sans pagination pour pouvoir trier par lastName
+          const allResults = await TestResult.find(query).exec();
+          total = allResults.length;
+
+          // Récupérer les données des candidats pour le tri
+          const candidateIds = allResults.map(result => result.candidateId);
+          const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+          const candidatesMap = new Map(candidates.map(c => [c._id.toString(), c]));
+
+          // Combiner les résultats avec les données des candidats et trier
+          const resultsWithCandidates = await Promise.all(allResults.map(async result => {
+            const candidate = candidatesMap.get(result.candidateId.toString());
+            if (!candidate) {
+              return {
+                ...result.toObject(),
+                candidate: null,
+                lastName: ''
+              };
+            }
+
+            const contact = await ContactModel.findById(candidate.contact);
+            return {
+              ...result.toObject(),
+              candidate: contact
+                ? {
+                  firstName: contact.firstname,
+                  lastName: contact.lastname,
+                  email: contact.email
+                }
+                : null,
+              lastName: contact ? contact.lastname : ''
+            };
+          }));
+
+          // Trier par lastName
+          resultsWithCandidates.sort((a, b) => {
+            const lastNameA = (a.lastName || '').toLowerCase();
+            const lastNameB = (b.lastName || '').toLowerCase();
+            return sortDirection === 1
+              ? lastNameA.localeCompare(lastNameB)
+              : lastNameB.localeCompare(lastNameA);
+          });
+
+          // Appliquer la pagination
+          results = resultsWithCandidates.slice(skip, skip + limit);
+        } else {
+          // Tri direct dans MongoDB pour invitationDate
+          const sortObject: any = {};
+          sortObject[sortBy] = sortDirection;
+
+          [results, total] = await Promise.all([
+            TestResult.find(query)
+              .sort(sortObject)
+              .skip(skip)
+              .limit(limit)
+              .exec(),
+            TestResult.countDocuments(query)
+          ]);
+        }
 
         // Calculer le maxScore du test
         let maxScore = 0;
@@ -1086,31 +1149,46 @@ class ExamsRouter extends EnduranceRouter {
           maxScore = questions.reduce((sum, q) => sum + (q.maxScore || 0), 0);
         }
 
-        // Combiner les résultats avec les données des candidats
-        const resultsWithCandidates = await Promise.all(results.map(async result => {
-          const candidate = candidatesMap.get(result.candidateId.toString());
-          if (!candidate) {
+        // Si on a déjà traité les candidats pour le tri par lastName, on utilise directement les résultats
+        let resultsWithCandidates;
+        if (sortBy === 'lastName') {
+          // Les résultats sont déjà traités avec les données des candidats
+          resultsWithCandidates = results.map(result => ({
+            ...result,
+            maxScore
+          }));
+        } else {
+          // Récupérer les données des candidats
+          const candidateIds = results.map(result => result.candidateId);
+          const candidates = await Candidate.find({ _id: { $in: candidateIds } });
+          const candidatesMap = new Map(candidates.map(c => [c._id.toString(), c]));
+
+          // Combiner les résultats avec les données des candidats
+          resultsWithCandidates = await Promise.all(results.map(async result => {
+            const candidate = candidatesMap.get(result.candidateId.toString());
+            if (!candidate) {
+              return {
+                ...result.toObject(),
+                candidate: null,
+                maxScore
+              };
+            }
+
+            // Récupérer le contact pour obtenir les informations personnelles
+            const contact = await ContactModel.findById(candidate.contact);
             return {
               ...result.toObject(),
-              candidate: null,
+              candidate: contact
+                ? {
+                  firstName: contact.firstname,
+                  lastName: contact.lastname,
+                  email: contact.email
+                }
+                : null,
               maxScore
             };
-          }
-
-          // Récupérer le contact pour obtenir les informations personnelles
-          const contact = await ContactModel.findById(candidate.contact);
-          return {
-            ...result.toObject(),
-            candidate: contact
-              ? {
-                firstName: contact.firstname,
-                lastName: contact.lastname,
-                email: contact.email
-              }
-              : null,
-            maxScore
-          };
-        }));
+          }));
+        }
 
         const totalPages = Math.ceil(total / limit);
 
