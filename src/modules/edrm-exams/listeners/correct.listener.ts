@@ -105,6 +105,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     if (candidate) {
       const contact = await ContactModel.findById(candidate.contact);
       if (contact) {
+        const testLink = (process.env.TEST_INVITATION_LINK || '') + contact.email;
         enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
           template: 'test-result',
           to: contact.email,
@@ -113,7 +114,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
             lastname: contact.lastname,
             score: result.score,
             testName: test?.title || '',
-            testLink: process.env.TEST_INVITATION_LINK || ''
+            testLink: testLink
           }
         });
       }

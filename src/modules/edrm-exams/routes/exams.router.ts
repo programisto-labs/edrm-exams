@@ -670,7 +670,7 @@ class ExamsRouter extends EnduranceRouter {
         const email = contact.email;
 
         // Construire le lien d'invitation
-        const testLink = process.env.TEST_INVITATION_LINK || '';
+        const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
 
         // Récupérer les credentials d'envoi
         const emailUser = process.env.EMAIL_USER;
@@ -1256,7 +1256,7 @@ class ExamsRouter extends EnduranceRouter {
         const emailPassword = process.env.EMAIL_PASSWORD;
 
         // Construire le lien d'invitation
-        const testLink = process.env.TEST_INVITATION_LINK || '';
+        const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
 
         // Envoyer l'email via l'event emitter
         await emitter.emit(eventTypes.SEND_EMAIL, {
