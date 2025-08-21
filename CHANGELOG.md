@@ -1,3 +1,11 @@
+## [0.2.7](https://github.com/programisto-labs/edrm-exams/compare/v0.2.6...v0.2.7) (2025-08-21)
+
+
+### Bug Fixes
+
+* add result score ([843a924](https://github.com/programisto-labs/edrm-exams/commit/843a924df87e60b2fe70d18c4e06d8a47a39ece1))
+* fix question generation number ([ae3e42b](https://github.com/programisto-labs/edrm-exams/commit/ae3e42b76a0e36f9cd65db6aca8a7525bbe51d61))
+
 ## [0.2.6](https://github.com/programisto-labs/edrm-exams/compare/v0.2.5...v0.2.6) (2025-08-21)
 
 
