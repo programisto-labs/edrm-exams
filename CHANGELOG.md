@@ -1,3 +1,10 @@
+## [0.2.10](https://github.com/programisto-labs/edrm-exams/compare/v0.2.9...v0.2.10) (2025-08-21)
+
+
+### Bug Fixes
+
+* add number of questions ([fb73e90](https://github.com/programisto-labs/edrm-exams/commit/fb73e90c4fb540a9739a901c297cd1e8aa5972f0))
+
 ## [0.2.9](https://github.com/programisto-labs/edrm-exams/compare/v0.2.8...v0.2.9) (2025-08-21)
 
 
