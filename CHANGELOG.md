@@ -1,3 +1,10 @@
+## [0.2.9](https://github.com/programisto-labs/edrm-exams/compare/v0.2.8...v0.2.9) (2025-08-21)
+
+
+### Bug Fixes
+
+* add email in test inviation link ([c163043](https://github.com/programisto-labs/edrm-exams/commit/c16304398086b23b7639431785a941794cc01925))
+
 ## [0.2.8](https://github.com/programisto-labs/edrm-exams/compare/v0.2.7...v0.2.8) (2025-08-21)
 
 
