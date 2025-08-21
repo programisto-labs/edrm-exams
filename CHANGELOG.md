@@ -1,3 +1,10 @@
+## [0.2.6](https://github.com/programisto-labs/edrm-exams/compare/v0.2.5...v0.2.6) (2025-08-21)
+
+
+### Bug Fixes
+
+* fix candidates search ([b29b5bc](https://github.com/programisto-labs/edrm-exams/commit/b29b5bc3643f6afcdfcf2e20a06c21c62d814c8e))
+
 ## [0.2.5](https://github.com/programisto-labs/edrm-exams/compare/v0.2.4...v0.2.5) (2025-08-14)
 
 
