@@ -78,7 +78,7 @@ const contextBuilder: ContextBuilder = {
     const instruction = question.instruction;
     const maxScore = question.maxScore;
     const questionType = question.questionType;
-    const possibleResponses = question.possibleResponses.map((response, index) => `réponse ${index + 1} = ${response}`).join('\n');
+    const possibleResponses = question.possibleResponses.map((response, index) => `réponse ${index + 1} = "${response.possibleResponse}" (${response.valid ? 'correcte' : 'incorrecte'})`).join('\n');
     const context = {
       instruction,
       response,
