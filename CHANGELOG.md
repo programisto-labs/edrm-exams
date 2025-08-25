@@ -1,3 +1,10 @@
+## [0.2.11](https://github.com/programisto-labs/edrm-exams/compare/v0.2.10...v0.2.11) (2025-08-25)
+
+
+### Bug Fixes
+
+* fix MCQ question correction ([9a85e48](https://github.com/programisto-labs/edrm-exams/commit/9a85e48ec9bd99ee17e93bd04d898f6acb585f96))
+
 ## [0.2.10](https://github.com/programisto-labs/edrm-exams/compare/v0.2.9...v0.2.10) (2025-08-21)
 
 
