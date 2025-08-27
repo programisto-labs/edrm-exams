@@ -5,7 +5,7 @@ import TestResult from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
-import { generateLiveMessage } from '../lib/openai.js';
+import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
 import { Document, Types } from 'mongoose';
 
 // Définition des types
@@ -46,6 +46,66 @@ interface ExtendedResult extends Document {
 class ExamsRouter extends EnduranceRouter {
   constructor() {
     super(EnduranceAuthMiddleware.getInstance());
+  }
+
+  private async generateAndSaveQuestion(
+    test: ExtendedTest,
+    categoryInfo: { categoryId: string, expertiseLevel: string },
+    useAssistant: boolean = false
+  ): Promise<Document | null> {
+    try {
+      const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
+      if (!categoryDoc) {
+        console.error('Catégorie non trouvée:', categoryInfo.categoryId);
+        return null;
+      }
+
+      // Récupérer les questions existantes pour éviter les doublons
+      const otherQuestionsIds = test.questions.map(question => question.questionId);
+      const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
+
+      const questionParams = {
+        job: test.targetJob,
+        seniority: test.seniorityLevel,
+        category: categoryDoc.name,
+        questionType: ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
+        expertiseLevel: categoryInfo.expertiseLevel,
+        otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
+      };
+
+      let generatedQuestion: string;
+      if (useAssistant) {
+        generatedQuestion = await generateLiveMessageAssistant(
+          process.env.OPENAI_ASSISTANT_ID_CREATE_QUESTION || '',
+          'createQuestion',
+          questionParams,
+          true
+        );
+      } else {
+        generatedQuestion = await generateLiveMessage(
+          'createQuestion',
+          questionParams,
+          true
+        );
+      }
+
+      if (generatedQuestion === 'Brain freezed, I cannot generate a live message right now.') {
+        console.error('Échec de génération de question pour la catégorie:', categoryDoc.name);
+        return null;
+      }
+
+      const question = new TestQuestion(JSON.parse(generatedQuestion));
+      await question.save();
+
+      // Ajouter la question au test et sauvegarder immédiatement
+      test.questions.push({ questionId: question._id, order: test.questions.length });
+      await test.save();
+
+      return question;
+    } catch (error) {
+      console.error('Erreur lors de la génération/sauvegarde de la question:', error);
+      return null;
+    }
   }
 
   setupRoutes(): void {
@@ -978,54 +1038,37 @@ class ExamsRouter extends EnduranceRouter {
 
         const generatedQuestions: Document[] = [];
         let questionsGenerated = 0;
+        let attempts = 0;
+        const maxAttempts = numberOfQuestions * 3; // Limite pour éviter les boucles infinies
 
-        // Mélanger les catégories pour une répartition aléatoire
-        const shuffledCategories = [...categoriesToUse].sort(() => Math.random() - 0.5);
+        // Si on spécifie une catégorie, on génère toutes les questions pour cette catégorie
+        if (category && category !== 'ALL') {
+          const categoryInfo = categoriesToUse[0];
 
-        for (const categoryInfo of shuffledCategories) {
-          // Arrêter si on a déjà généré le nombre de questions demandé
-          if (questionsGenerated >= numberOfQuestions) break;
+          while (questionsGenerated < numberOfQuestions && attempts < maxAttempts) {
+            attempts++;
 
-          const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
-          if (!categoryDoc) continue;
-
-          const otherQuestionsIds = test.questions.map(question => question.questionId);
-          const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
-
-          // Calculer combien de questions générer pour cette catégorie
-          const remainingQuestions = numberOfQuestions - questionsGenerated;
-          const questionsForThisCategory = Math.min(remainingQuestions, Math.ceil(numberOfQuestions / categoriesToUse.length));
-
-          for (let i = 0; i < questionsForThisCategory; i++) {
-            const generatedQuestion = await generateLiveMessage(
-              'createQuestion',
-              {
-                job: test.targetJob,
-                seniority: test.seniorityLevel,
-                category: categoryDoc.name,
-                questionType: ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
-                expertiseLevel: categoryInfo.expertiseLevel,
-                otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
-              },
-              true
-            );
-
-            // Vérifier si la réponse est un JSON valide
-            if (generatedQuestion === 'Brain freezed, I cannot generate a live message right now.') {
-              console.error('Échec de génération de question pour la catégorie:', categoryDoc.name);
-              continue; // Passer à la question suivante
-            }
-
-            try {
-              const question = new TestQuestion(JSON.parse(generatedQuestion));
-              await question.save();
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
+            if (question) {
               generatedQuestions.push(question);
-              test.questions.push({ questionId: question._id, order: test.questions.length });
               questionsGenerated++;
-            } catch (parseError) {
-              console.error('Erreur lors du parsing de la question générée:', parseError);
-              console.error('Réponse reçue:', generatedQuestion);
-              continue; // Passer à la question suivante
+            }
+          }
+        } else {
+          // Pour ALL, répartition aléatoire sur toutes les catégories
+          const shuffledCategories = [...categoriesToUse].sort(() => Math.random() - 0.5);
+
+          while (questionsGenerated < numberOfQuestions && attempts < maxAttempts) {
+            attempts++;
+
+            // Sélectionner une catégorie aléatoire
+            const randomCategoryIndex = Math.floor(Math.random() * shuffledCategories.length);
+            const categoryInfo = shuffledCategories[randomCategoryIndex];
+
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
+            if (question) {
+              generatedQuestions.push(question);
+              questionsGenerated++;
             }
           }
         }
@@ -1037,7 +1080,6 @@ class ExamsRouter extends EnduranceRouter {
           });
         }
 
-        await test.save();
         res.status(200).json({
           message: `${generatedQuestions.length} question(s) générée(s) avec succès`,
           questions: generatedQuestions,

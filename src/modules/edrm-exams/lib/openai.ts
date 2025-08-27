@@ -134,6 +134,77 @@ export async function generateLiveMessage(
   return 'Brain freezed, I cannot generate a live message right now.';
 }
 
+export async function generateLiveMessageAssistant(
+  assistantId: string,
+  messageType: keyof ContextBuilder,
+  params: CreateQuestionParams | CorrectQuestionParams,
+  json?: boolean
+): Promise<string> {
+  const MAX_RETRY = 2;
+  let retryCount = 0;
+
+  // Construire le contexte pour le message
+  const context = await contextBuilder[messageType](params as any);
+  const text = fs.readFileSync(
+    path.join(__dirname, 'openai', `${messageType}.txt`),
+    'utf8'
+  );
+
+  const message = text.replace(/\${(.*?)}/g, (_, v) => context[v]);
+
+  while (retryCount <= MAX_RETRY) {
+    try {
+      // Créer un thread avec l'assistant
+      const thread = await openai.beta.threads.create();
+
+      // Ajouter le message avec le contexte
+      await openai.beta.threads.messages.create(thread.id, {
+        role: 'user',
+        content: message
+      });
+
+      // Exécuter l'assistant
+      const run = await openai.beta.threads.runs.create(thread.id, {
+        assistant_id: assistantId
+      });
+
+      // Attendre que l'exécution soit terminée
+      let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      while (runStatus.status === 'in_progress' || runStatus.status === 'queued') {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
+      }
+
+      if (runStatus.status === 'failed') {
+        throw new Error('Assistant execution failed');
+      }
+
+      // Récupérer les messages de réponse
+      const messages = await openai.beta.threads.messages.list(thread.id);
+      const lastMessage = messages.data[0]; // Le premier message est le plus récent
+
+      if (!lastMessage || !lastMessage.content || lastMessage.content.length === 0) {
+        throw new Error('No content in response');
+      }
+
+      const content = lastMessage.content[0];
+      if (content.type === 'text') {
+        return removeQuotes(content.text.value);
+      } else {
+        throw new Error('Unexpected content type');
+      }
+
+    } catch (error) {
+      retryCount++;
+      console.log(error);
+      if (retryCount > MAX_RETRY) {
+        return 'Brain freezed, I cannot generate a live message right now.';
+      }
+    }
+  }
+  return 'Brain freezed, I cannot generate a live message right now.';
+}
+
 function removeQuotes(str: string): string {
   if (str.startsWith('"') && str.endsWith('"')) {
     return str.substring(1, str.length - 1);
