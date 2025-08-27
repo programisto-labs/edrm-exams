@@ -384,7 +384,7 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Test not found' });
         }
         for (let i = 0; i < test.questions.length; i++) {
-          await TestQuestion.findByIdAndDelete(test.questions[i]);
+          await TestQuestion.findByIdAndDelete(test.questions[i].questionId);
         }
         await TestResult.deleteMany({ testId: id });
         await Test.findByIdAndDelete(id);
