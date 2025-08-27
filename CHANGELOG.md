@@ -1,3 +1,15 @@
+# [0.3.0](https://github.com/programisto-labs/edrm-exams/compare/v0.2.13...v0.3.0) (2025-08-27)
+
+
+### Bug Fixes
+
+* console log ([4820e30](https://github.com/programisto-labs/edrm-exams/commit/4820e303601034c0741e89d1d6666e2de7e986cf))
+
+
+### Features
+
+* upgrade jobs appart and fix correction ([766c72b](https://github.com/programisto-labs/edrm-exams/commit/766c72b0bfb09e9b8f8e0d64c626135d1f4c9ead))
+
 ## [0.2.13](https://github.com/programisto-labs/edrm-exams/compare/v0.2.12...v0.2.13) (2025-08-27)
 
 
