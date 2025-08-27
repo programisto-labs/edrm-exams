@@ -3,10 +3,40 @@ import Test from '../models/test.model.js';
 import TestQuestion from '../models/test-question.model.js';
 import TestResult from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
+import TestJob from '../models/test-job.model.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
 import { Document, Types } from 'mongoose';
+
+// Fonction utilitaire pour récupérer le nom du job
+async function getJobName(targetJob: any): Promise<string> {
+  // Si c'est déjà une string (ancien format), on la retourne directement
+  if (typeof targetJob === 'string') {
+    return targetJob;
+  }
+
+  // Si c'est un ObjectId, on récupère le job
+  if (targetJob && typeof targetJob === 'object' && targetJob._id) {
+    const job = await TestJob.findById(targetJob._id);
+    return job ? job.name : 'Job inconnu';
+  }
+
+  // Si c'est juste un ObjectId
+  if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
+    const job = await TestJob.findById(targetJob);
+    return job ? job.name : 'Job inconnu';
+  }
+
+  return 'Job inconnu';
+}
+
+// Fonction pour migrer automatiquement un test si nécessaire
+async function migrateTestIfNeeded(test: any): Promise<void> {
+  if (typeof test.targetJob === 'string') {
+    await test.migrateTargetJob();
+  }
+}
 
 // Définition des types
 interface TestQuestionRef {
@@ -64,8 +94,9 @@ class ExamsRouter extends EnduranceRouter {
       const otherQuestionsIds = test.questions.map(question => question.questionId);
       const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
+      const jobName = await getJobName(test.targetJob);
       const questionParams = {
-        job: test.targetJob,
+        job: jobName,
         seniority: test.seniorityLevel,
         category: categoryDoc.name,
         questionType: ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
@@ -157,6 +188,81 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
+    // Créer un job type
+    this.post('/jobs', authenticatedOptions, async (req: any, res: any) => {
+      const { name } = req.body;
+
+      if (!name) {
+        return res.status(400).json({ message: 'Error, name is required' });
+      }
+
+      try {
+        const newJob = new TestJob({ name });
+        await newJob.save();
+        res.status(201).json({ message: 'job created with success', job: newJob });
+      } catch (err) {
+        console.error('error when creating job : ', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+
+    // Lister tous les jobs
+    this.get('/jobs', authenticatedOptions, async (req: any, res: any) => {
+      try {
+        const jobs = await TestJob.find();
+        res.status(200).json({ array: jobs });
+      } catch (err) {
+        console.error('error when getting jobs : ', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+
+    // Obtenir un job par son ID
+    this.get('/jobs/:id', authenticatedOptions, async (req: any, res: any) => {
+      const { id } = req.params;
+      try {
+        const job = await TestJob.findById(id);
+        if (!job) {
+          return res.status(404).json({ message: 'no job founded with this id' });
+        }
+        res.status(200).json({ array: job });
+      } catch (err) {
+        console.error('error when getting job : ', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+
+    // Migrer tous les tests avec l'ancien format targetJob
+    this.post('/migrate-targetjobs', authenticatedOptions, async (req: any, res: any) => {
+      try {
+        const tests = await Test.find();
+        let migratedCount = 0;
+        let errorCount = 0;
+
+        for (const test of tests) {
+          try {
+            // Vérifier si le test a besoin de migration
+            if (typeof test.targetJob === 'string') {
+              await test.migrateTargetJob();
+              migratedCount++;
+            }
+          } catch (error) {
+            console.error(`Erreur lors de la migration du test ${test._id}:`, error);
+            errorCount++;
+          }
+        }
+
+        res.status(200).json({
+          message: `Migration terminée. ${migratedCount} tests migrés, ${errorCount} erreurs.`,
+          migratedCount,
+          errorCount
+        });
+      } catch (err) {
+        console.error('Erreur lors de la migration :', err);
+        res.status(500).json({ message: 'Erreur interne du serveur' });
+      }
+    });
+
     // Créer un test
     this.post('/test', authenticatedOptions, async (req: any, res: any) => {
       const { title, description, targetJob, seniorityLevel, categories, state = 'draft' } = req.body;
@@ -169,6 +275,19 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const companyId = user?.companyId;
         const userId = user?._id;
+
+        // Traiter le targetJob - si c'est une string, on cherche ou crée le TestJob
+        let targetJobId;
+        if (typeof targetJob === 'string') {
+          let existingJob = await TestJob.findOne({ name: targetJob });
+          if (!existingJob) {
+            existingJob = new TestJob({ name: targetJob });
+            await existingJob.save();
+          }
+          targetJobId = existingJob._id;
+        } else {
+          targetJobId = targetJob;
+        }
 
         const processedCategories = await Promise.all(categories?.map(async (category: { name: string, expertiseLevel: string }) => {
           let existingCategory = await TestCategory.findOne({ name: category.name });
@@ -188,7 +307,7 @@ class ExamsRouter extends EnduranceRouter {
           userId,
           title,
           description,
-          targetJob,
+          targetJob: targetJobId,
           seniorityLevel,
           state,
           categories: processedCategories
@@ -214,7 +333,19 @@ class ExamsRouter extends EnduranceRouter {
 
         if (title) test.title = title;
         if (description) test.description = description;
-        if (targetJob) test.targetJob = targetJob;
+        if (targetJob) {
+          // Traiter le targetJob - si c'est une string, on cherche ou crée le TestJob
+          if (typeof targetJob === 'string') {
+            let existingJob = await TestJob.findOne({ name: targetJob });
+            if (!existingJob) {
+              existingJob = new TestJob({ name: targetJob });
+              await existingJob.save();
+            }
+            (test as any).targetJob = existingJob._id;
+          } else {
+            test.targetJob = targetJob;
+          }
+        }
         if (seniorityLevel) test.seniorityLevel = seniorityLevel;
         if (state) test.state = state;
 
@@ -275,6 +406,9 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
+        // Migration automatique si nécessaire
+        await migrateTestIfNeeded(test);
+
         const questions: Document[] = [];
         for (const questionRef of test.questions) {
           console.log(questionRef);
@@ -284,7 +418,12 @@ class ExamsRouter extends EnduranceRouter {
             questions.push(question);
           }
         }
-        res.status(200).json({ test, questions });
+
+        // Récupérer le nom du job pour l'affichage
+        const testObj = test.toObject();
+        (testObj as any).targetJobName = await getJobName(testObj.targetJob);
+
+        res.status(200).json({ test: testObj, questions });
       } catch (err) {
         console.error('error when geting test : ', err);
         res.status(500).json({ message: 'Internal server error' });
@@ -309,7 +448,14 @@ class ExamsRouter extends EnduranceRouter {
 
         // Filtres
         if (targetJob !== 'all') {
-          query.targetJob = targetJob;
+          // Si on filtre par targetJob, on cherche d'abord le TestJob correspondant
+          const jobType = await TestJob.findOne({ name: targetJob });
+          if (jobType) {
+            query.targetJob = jobType._id;
+          } else {
+            // Si le job n'existe pas, on ne retourne aucun résultat
+            query.targetJob = null;
+          }
         }
         if (seniorityLevel !== 'all') {
           query.seniorityLevel = seniorityLevel;
@@ -320,10 +466,14 @@ class ExamsRouter extends EnduranceRouter {
 
         // Recherche sur testName et targetJob
         if (search) {
+          // Pour la recherche sur targetJob, on cherche d'abord les jobs qui correspondent
+          const matchingJobs = await TestJob.find({ name: { $regex: search, $options: 'i' } });
+          const jobIds = matchingJobs.map(job => job._id);
+
           query.$or = [
             { title: { $regex: search, $options: 'i' } },
             { description: { $regex: search, $options: 'i' } },
-            { targetJob: { $regex: search, $options: 'i' } },
+            { targetJob: { $in: jobIds } },
             { seniorityLevel: { $regex: search, $options: 'i' } }
           ];
         }
@@ -344,9 +494,16 @@ class ExamsRouter extends EnduranceRouter {
           Test.countDocuments(query)
         ]);
 
-        // Récupérer les noms des catégories pour chaque test
+        // Récupérer les noms des catégories et des jobs pour chaque test
         const testsWithCategories = await Promise.all(tests.map(async (test) => {
+          // Migration automatique si nécessaire
+          await migrateTestIfNeeded(test);
+
           const testObj = test.toObject();
+
+          // Récupérer le nom du job
+          (testObj as any).targetJobName = await getJobName(testObj.targetJob);
+
           if (testObj.categories && testObj.categories.length > 0) {
             const categoriesWithNames = await Promise.all(testObj.categories.map(async (category) => {
               const categoryDoc = await TestCategory.findById(category.categoryId);
@@ -591,11 +748,12 @@ class ExamsRouter extends EnduranceRouter {
         const otherQuestionsIds = test.questions.map(question => question.questionId);
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
+        const jobName = await getJobName(test.targetJob);
         const generatedQuestion = await generateLiveMessageAssistant(
           process.env.OPENAI_ASSISTANT_ID_CREATE_QUESTION || '',
           'createQuestion',
           {
-            job: test.targetJob,
+            job: jobName,
             seniority: test.seniorityLevel,
             questionType,
             category,
@@ -604,6 +762,7 @@ class ExamsRouter extends EnduranceRouter {
           },
           true
         );
+
         const question = new TestQuestion(JSON.parse(generatedQuestion));
         await question.save();
 

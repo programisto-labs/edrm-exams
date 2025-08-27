@@ -2,6 +2,29 @@ import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmi
 import CandidateModel from '../models/candidate.model.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
+import TestJob from '../models/test-job.model.js';
+
+// Fonction utilitaire pour récupérer le nom du job
+async function getJobName(targetJob: any): Promise<string> {
+    // Si c'est déjà une string (ancien format), on la retourne directement
+    if (typeof targetJob === 'string') {
+        return targetJob;
+    }
+
+    // Si c'est un ObjectId, on récupère le job
+    if (targetJob && typeof targetJob === 'object' && targetJob._id) {
+        const job = await TestJob.findById(targetJob._id);
+        return job ? job.name : 'Job inconnu';
+    }
+
+    // Si c'est juste un ObjectId
+    if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
+        const job = await TestJob.findById(targetJob);
+        return job ? job.name : 'Job inconnu';
+    }
+
+    return 'Job inconnu';
+}
 
 // eslint-disable-next-line no-unused-vars
 interface CandidateData {
@@ -101,7 +124,7 @@ class ResultRouter extends EnduranceRouter {
                             ? {
                                 title: test.title,
                                 description: test.description,
-                                targetJob: test.targetJob,
+                                targetJob: await getJobName(test.targetJob),
                                 seniorityLevel: test.seniorityLevel,
                                 categories: categoriesWithNames
                             }
@@ -155,6 +178,9 @@ class ResultRouter extends EnduranceRouter {
                 const maxTime = questions.reduce((sum, q) => sum + (q.time || 0), 0);
                 const numberOfQuestions = questions.length;
 
+                // Récupérer le nom du job
+                const targetJobName = await getJobName(test.targetJob);
+
                 // Construire la réponse sans les questions
                 const {
                     questions: _questions, // on retire les questions
@@ -163,6 +189,7 @@ class ResultRouter extends EnduranceRouter {
 
                 return res.json({
                     ...testWithoutQuestions,
+                    targetJobName,
                     categories: categoriesWithNames,
                     maxTime,
                     numberOfQuestions
@@ -361,19 +388,29 @@ class ResultRouter extends EnduranceRouter {
                     comment: ''
                 });
 
+                // Marquer explicitement le champ responses comme modifié
+                result.markModified('responses');
+
+                console.log('Avant sauvegarde - Responses:', result.responses);
+
                 // Vérifier si c'était la dernière question
                 const totalQuestions = test.questions.length;
                 const answeredQuestions = result.responses.length;
 
                 if (answeredQuestions === totalQuestions) {
                     result.state = TestState.Finish;
-                    // Déclencher la correction automatique
-                    await enduranceEmitter.emit(enduranceEventTypes.CORRECT_TEST, result);
                 } else {
                     result.state = TestState.InProgress;
                 }
 
-                await result.save();
+                // Sauvegarder d'abord la réponse
+                const savedResult = await result.save();
+                console.log('Après sauvegarde - Responses:', savedResult.responses);
+
+                // Déclencher la correction automatique seulement après la sauvegarde
+                if (answeredQuestions === totalQuestions) {
+                    await enduranceEmitter.emit(enduranceEventTypes.CORRECT_TEST, savedResult);
+                }
 
                 return res.status(200).json({
                     message: 'Réponse enregistrée',

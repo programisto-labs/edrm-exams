@@ -76,19 +76,54 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
 
       console.log('Correction result:', { scoreResponse });
       const parsedResult: CorrectionResult = JSON.parse(scoreResponse);
-      finalscore += parsedResult.score;
-      dbResponse.score = parsedResult.score;
+
+      // Valider le score retourné par l'IA
+      let validScore = 0;
+      if (parsedResult.score !== undefined && parsedResult.score !== null) {
+        const score = parseFloat(parsedResult.score.toString());
+        if (!isNaN(score) && isFinite(score) && score >= 0) {
+          validScore = score;
+        } else {
+          console.warn('Invalid score returned by AI:', parsedResult.score);
+        }
+      }
+
+      finalscore += validScore;
+      dbResponse.score = validScore;
       dbResponse.comment = parsedResult.comment || '';
+    }
+
+    // S'assurer que finalscore est un nombre valide
+    if (isNaN(finalscore) || !isFinite(finalscore)) {
+      console.warn('Invalid finalscore calculated, setting to 0:', finalscore);
+      finalscore = 0;
+    }
+
+    // S'assurer que maxScore est un nombre valide
+    if (isNaN(maxScore) || !isFinite(maxScore)) {
+      console.warn('Invalid maxScore calculated, setting to 0:', maxScore);
+      maxScore = 0;
     }
 
     // Mettre à jour le score final et l'état
     result.score = finalscore;
     result.state = TestState.Finish;
-
     // Forcer la sauvegarde des sous-documents responses
     result.markModified('responses');
 
-    const scorePercentage = Math.ceil((finalscore / maxScore) * 100);
+    // Calculer le pourcentage de score en évitant la division par zéro
+    let scorePercentage = 0;
+    if (maxScore > 0) {
+      scorePercentage = Math.ceil((finalscore / maxScore) * 100);
+    } else if (finalscore > 0) {
+      // Si maxScore est 0 mais qu'il y a un score, on met 100%
+      scorePercentage = 100;
+    }
+
+    // S'assurer que le score est un nombre valide
+    if (isNaN(scorePercentage) || !isFinite(scorePercentage)) {
+      scorePercentage = 0;
+    }
 
     // Sauvegarder les modifications avec findByIdAndUpdate pour éviter les conflits de version
     await TestResult.findByIdAndUpdate(result._id, {

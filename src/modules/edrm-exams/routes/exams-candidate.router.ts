@@ -3,8 +3,31 @@ import CandidateModel from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import TestResult from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
+import TestJob from '../models/test-job.model.js';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
+
+// Fonction utilitaire pour récupérer le nom du job
+async function getJobName(targetJob: any): Promise<string> {
+    // Si c'est déjà une string (ancien format), on la retourne directement
+    if (typeof targetJob === 'string') {
+        return targetJob;
+    }
+
+    // Si c'est un ObjectId, on récupère le job
+    if (targetJob && typeof targetJob === 'object' && targetJob._id) {
+        const job = await TestJob.findById(targetJob._id);
+        return job ? job.name : 'Job inconnu';
+    }
+
+    // Si c'est juste un ObjectId
+    if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
+        const job = await TestJob.findById(targetJob);
+        return job ? job.name : 'Job inconnu';
+    }
+
+    return 'Job inconnu';
+}
 
 interface CandidateData {
     // Informations de contact
@@ -463,7 +486,7 @@ class CandidateRouter extends EnduranceRouter {
                 const categoriesMap = new Map(categoriesDocs.map(cat => [cat._id.toString(), cat.name]));
 
                 // Combiner les résultats avec les informations des tests et des catégories
-                const resultsWithTests = results.map(result => {
+                const resultsWithTests = await Promise.all(results.map(async result => {
                     const test = testsMap.get(result.testId.toString());
                     let categoriesWithNames: any[] = [];
                     if (test && test.categories) {
@@ -478,13 +501,13 @@ class CandidateRouter extends EnduranceRouter {
                             ? {
                                 title: test.title,
                                 description: test.description,
-                                targetJob: test.targetJob,
+                                targetJob: await getJobName(test.targetJob),
                                 seniorityLevel: test.seniorityLevel,
                                 categories: categoriesWithNames
                             }
                             : null
                     };
-                });
+                }));
 
                 const totalPages = Math.ceil(total / limit);
 

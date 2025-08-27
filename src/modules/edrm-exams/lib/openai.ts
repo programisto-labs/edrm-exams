@@ -151,7 +151,7 @@ export async function generateLiveMessageAssistant(
   );
 
   const message = text.replace(/\${(.*?)}/g, (_, v) => context[v]);
-
+  console.log(message);
   while (retryCount <= MAX_RETRY) {
     try {
       // Créer un thread avec l'assistant

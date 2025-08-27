@@ -2,6 +2,7 @@ import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core
 import Company from './company.model.js';
 import TestQuestion from './test-question.model.js';
 import TestCategory from './test-category.models.js';
+import TestJob from './test-job.model.js';
 import User from './user.model.js';
 
 enum TestState {
@@ -11,19 +12,6 @@ enum TestState {
     Published = 'published',
     // eslint-disable-next-line no-unused-vars
     Archived = 'archived'
-}
-
-enum JobType {
-    // eslint-disable-next-line no-unused-vars
-    FrontEnd = 'front-end',
-    // eslint-disable-next-line no-unused-vars
-    BackEnd = 'back-end',
-    // eslint-disable-next-line no-unused-vars
-    Fullstack = 'fullstack',
-    // eslint-disable-next-line no-unused-vars
-    DevOps = 'devops',
-    // eslint-disable-next-line no-unused-vars
-    Data = 'data'
 }
 
 enum SeniorityLevel {
@@ -89,14 +77,39 @@ class Test extends EnduranceSchema {
     @EnduranceModelType.prop({ type: [Object], required: false })
     public categories?: TestCategoryWithExpertise[];
 
-    @EnduranceModelType.prop({ required: true, enum: JobType })
-    public targetJob!: JobType;
+    @EnduranceModelType.prop({ ref: () => TestJob, required: true })
+    public targetJob!: typeof TestJob;
 
     @EnduranceModelType.prop({ required: true, enum: SeniorityLevel })
     public seniorityLevel!: SeniorityLevel;
 
     public static getModel() {
         return TestModel;
+    }
+
+    // Méthode pour migrer automatiquement les anciennes données
+    public async migrateTargetJob(): Promise<void> {
+        const testData = this as any;
+
+        // Si targetJob est une string (ancien format), on la migre
+        if (typeof testData.targetJob === 'string') {
+            try {
+                // Chercher si le job existe déjà
+                let jobType = await TestJob.findOne({ name: testData.targetJob });
+
+                // Si pas trouvé, on le crée
+                if (!jobType) {
+                    jobType = new TestJob({ name: testData.targetJob });
+                    await jobType.save();
+                }
+
+                // Mettre à jour la référence
+                (this as any).targetJob = jobType._id;
+                await this.save();
+            } catch (error) {
+                console.error('Erreur lors de la migration du targetJob:', error);
+            }
+        }
     }
 }
 
