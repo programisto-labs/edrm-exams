@@ -193,7 +193,6 @@ export async function generateLiveMessageAssistant(
       } else {
         throw new Error('Unexpected content type');
       }
-
     } catch (error) {
       retryCount++;
       console.log(error);

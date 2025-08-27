@@ -114,7 +114,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
             lastname: contact.lastname,
             score: result.score,
             testName: test?.title || '',
-            testLink: testLink
+            testLink
           }
         });
       }
