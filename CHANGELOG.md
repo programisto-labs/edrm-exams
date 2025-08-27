@@ -1,3 +1,12 @@
+## [0.2.13](https://github.com/programisto-labs/edrm-exams/compare/v0.2.12...v0.2.13) (2025-08-27)
+
+
+### Bug Fixes
+
+* upgrade 4o ([8e8fce8](https://github.com/programisto-labs/edrm-exams/commit/8e8fce825bc477014a69b90e126b3240d30a680f))
+* upgrade 4o ([755dd87](https://github.com/programisto-labs/edrm-exams/commit/755dd87f3c9c80f90d692d007a2edb8b913fa941))
+* upgrade correction to 4o ([daf8c07](https://github.com/programisto-labs/edrm-exams/commit/daf8c07e0af89b7f857e69e190c73b5b45a8319e))
+
 ## [0.2.12](https://github.com/programisto-labs/edrm-exams/compare/v0.2.11...v0.2.12) (2025-08-27)
 
 
