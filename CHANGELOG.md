@@ -1,3 +1,10 @@
+## [0.2.12](https://github.com/programisto-labs/edrm-exams/compare/v0.2.11...v0.2.12) (2025-08-27)
+
+
+### Bug Fixes
+
+* fix question delete and number of generated questions ([19dc691](https://github.com/programisto-labs/edrm-exams/commit/19dc6917cde917adf1752f4c6565d01c5ef50c9a))
+
 ## [0.2.11](https://github.com/programisto-labs/edrm-exams/compare/v0.2.10...v0.2.11) (2025-08-25)
 
 
