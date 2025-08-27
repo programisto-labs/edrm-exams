@@ -424,7 +424,14 @@ class ExamsRouter extends EnduranceRouter {
       if (!test) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
-      test.questions = test.questions.filter(id => id.toString() !== questionId);
+      // Supprimer la question du tableau questions en filtrant par questionId
+      test.questions = test.questions.filter(q => q.questionId.toString() !== questionId);
+
+      // Recalculer les ordres pour que ça se suive
+      test.questions.forEach((q, index) => {
+        q.order = index + 1;
+      });
+
       await test.save();
       res.status(200).json({ message: 'question deleted with sucess' });
     });
@@ -987,7 +994,7 @@ class ExamsRouter extends EnduranceRouter {
 
           // Calculer combien de questions générer pour cette catégorie
           const remainingQuestions = numberOfQuestions - questionsGenerated;
-          const questionsForThisCategory = Math.min(remainingQuestions, 1); // Au maximum 1 question par catégorie
+          const questionsForThisCategory = Math.min(remainingQuestions, Math.ceil(numberOfQuestions / categoriesToUse.length));
 
           for (let i = 0; i < questionsForThisCategory; i++) {
             const generatedQuestion = await generateLiveMessage(
