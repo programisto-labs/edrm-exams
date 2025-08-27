@@ -1,3 +1,10 @@
+## [0.3.1](https://github.com/programisto-labs/edrm-exams/compare/v0.3.0...v0.3.1) (2025-08-27)
+
+
+### Bug Fixes
+
+* delete test ([806c8f3](https://github.com/programisto-labs/edrm-exams/commit/806c8f3108b7f46e104b195477b78854bf7986e7))
+
 # [0.3.0](https://github.com/programisto-labs/edrm-exams/compare/v0.2.13...v0.3.0) (2025-08-27)
 
 
