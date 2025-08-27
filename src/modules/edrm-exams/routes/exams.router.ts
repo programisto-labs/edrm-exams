@@ -591,7 +591,8 @@ class ExamsRouter extends EnduranceRouter {
         const otherQuestionsIds = test.questions.map(question => question.questionId);
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
-        const generatedQuestion = await generateLiveMessage(
+        const generatedQuestion = await generateLiveMessageAssistant(
+          process.env.OPENAI_ASSISTANT_ID_CREATE_QUESTION || '',
           'createQuestion',
           {
             job: test.targetJob,
@@ -918,7 +919,8 @@ class ExamsRouter extends EnduranceRouter {
           const question = await TestQuestion.findById(response.questionId);
           if (!question) continue;
 
-          const score = await generateLiveMessage(
+          const score = await generateLiveMessageAssistant(
+            process.env.OPENAI_ASSISTANT_ID_CORRECT_QUESTION || '',
             'correctQuestion',
             {
               question: {

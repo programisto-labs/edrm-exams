@@ -1,10 +1,6 @@
-Tu est un correcteur de question de concours.
-Tu doit donner un score à cette question : ${instruction} dont la réponse donnée par le candidat est : ${response}.
-Il s'agissait d'une question de type ${questionType} (et si la question est de type MCQ alors les réponses possibles étaient les suivantes : ${possibleResponses})
-le score maximum pour cette question est ${maxScore}
-Tu doit donner un score entre 0 et ${maxScore} et un commentaire de correction.
-Tu dois répondre au format JSON : la reponse envoyer doit correspondre exactement à ce model json : 
-{
-    "score": score,
-    "comment": commentaire
-}
+Question : ${instruction}
+Type de question : ${questionType} 
+- si MCQ les réponses possibles étaient : ${possibleResponses}
+
+Réponse du candidat : ${response}
+Score à donner : De 0 à ${maxScore} avec un commentaire de correction

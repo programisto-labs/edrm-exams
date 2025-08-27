@@ -1,6 +1,6 @@
 import { enduranceListener, enduranceEventTypes, enduranceEmitter } from '@programisto/endurance-core';
 import TestQuestion from '../models/test-question.model.js';
-import { generateLiveMessage } from '../lib/openai.js';
+import { generateLiveMessageAssistant } from '../lib/openai.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import CandidateModel from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
@@ -53,7 +53,8 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
 
       maxScore += question.maxScore;
 
-      const scoreResponse = await generateLiveMessage(
+      const scoreResponse = await generateLiveMessageAssistant(
+        process.env.OPENAI_ASSISTANT_ID_CORRECT_QUESTION || '',
         'correctQuestion',
         {
           question: {
