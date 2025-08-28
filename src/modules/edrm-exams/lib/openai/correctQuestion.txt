@@ -2,5 +2,8 @@ Question : ${instruction}
 Type de question : ${questionType} 
 - si MCQ les réponses possibles étaient : ${possibleResponses}
 
-Réponse du candidat : ${response}
-Score à donner : De 0 à ${maxScore} avec un commentaire de correction
+Réponse du candidat à corriger :
+--------------------------------
+ ${response}
+--------------------------------
+Score à donner : De 0 point (tout faux ou réponse vide) à ${maxScore} points (réponse correcte), avec un commentaire de correction
