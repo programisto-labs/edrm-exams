@@ -323,7 +323,7 @@ class ExamsRouter extends EnduranceRouter {
     // Modifier un test
     this.put('/test/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { title, description, targetJob, seniorityLevel, categories, state } = req.body;
+      const { title, description, targetJob, seniorityLevel, categories, state, questions } = req.body;
 
       try {
         const test = await Test.findById(id);
@@ -364,6 +364,26 @@ class ExamsRouter extends EnduranceRouter {
           }));
 
           test.categories = processedCategories;
+        }
+
+        if (questions) {
+          // Vérifier que toutes les questions existent
+          const questionIds = questions.map((q: any) => q.questionId);
+          const existingQuestions = await TestQuestion.find({ _id: { $in: questionIds } });
+
+          if (existingQuestions.length !== questionIds.length) {
+            return res.status(400).json({
+              message: 'Certaines questions spécifiées n\'existent pas',
+              providedQuestions: questionIds.length,
+              foundQuestions: existingQuestions.length
+            });
+          }
+
+          // Mettre à jour les questions avec leur ordre
+          test.questions = questions.map((q: any) => ({
+            questionId: q.questionId,
+            order: q.order || 0
+          }));
         }
 
         await test.save();
