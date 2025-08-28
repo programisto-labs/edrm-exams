@@ -1,3 +1,10 @@
+## [0.3.3](https://github.com/programisto-labs/edrm-exams/compare/v0.3.2...v0.3.3) (2025-08-28)
+
+
+### Bug Fixes
+
+* update questions order in test ([fceb9da](https://github.com/programisto-labs/edrm-exams/commit/fceb9da35301eb9aae14488f5d5c4ce8c6f5f4a6))
+
 ## [0.3.2](https://github.com/programisto-labs/edrm-exams/compare/v0.3.1...v0.3.2) (2025-08-28)
 
 
