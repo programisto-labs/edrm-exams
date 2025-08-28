@@ -24,6 +24,26 @@ interface CorrectTestOptions {
   state: string;
 }
 
+async function sendDiscordNotification(message: string): Promise<void> {
+  const discordWebhook = process.env.TEST_CORRECTION_DISCORD_WEBHOOKS;
+
+  if (discordWebhook) {
+    try {
+      await fetch(discordWebhook, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: message
+        })
+      });
+    } catch (error) {
+      console.error('Error sending Discord notification:', error);
+    }
+  }
+}
+
 async function correctTest(options: CorrectTestOptions): Promise<void> {
   if (!options.testId) throw new Error('TestId is required');
   if (!options.responses) throw new Error('Responses are required');
@@ -153,6 +173,15 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
             testLink
           }
         });
+
+        // Envoyer une notification Discord
+        const discordMessage = '📊 **Nouveau résultat de test**\n' +
+          `**Candidat:** ${contact.firstname} ${contact.lastname}\n` +
+          `**Test:** ${test?.title || 'Test inconnu'}\n` +
+          `**Score:** ${scorePercentage}%\n` +
+          `**Score brut:** ${finalscore}/${maxScore}`;
+
+        await sendDiscordNotification(discordMessage);
       }
     }
   } catch (err) {
