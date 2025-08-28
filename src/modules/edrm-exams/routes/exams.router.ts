@@ -1537,6 +1537,24 @@ class ExamsRouter extends EnduranceRouter {
         res.status(500).json({ message: 'Erreur interne du serveur' });
       }
     });
+
+    // Supprimer un test result
+    this.delete('/result/:id', authenticatedOptions, async (req: any, res: any) => {
+      const { id } = req.params;
+
+      try {
+        const testResult = await TestResult.findById(id);
+        if (!testResult) {
+          return res.status(404).json({ message: 'TestResult not found' });
+        }
+
+        await TestResult.findByIdAndDelete(id);
+        res.status(200).json({ message: 'TestResult deleted with success' });
+      } catch (err) {
+        console.error('error when deleting testResult : ', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
   }
 }
 
