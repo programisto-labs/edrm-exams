@@ -1,3 +1,10 @@
+## [0.3.6](https://github.com/programisto-labs/edrm-exams/compare/v0.3.5...v0.3.6) (2025-08-28)
+
+
+### Bug Fixes
+
+* add discord notif on result ([d236a66](https://github.com/programisto-labs/edrm-exams/commit/d236a66d104c1c522ffb744eab31be51c06a8cb2))
+
 ## [0.3.5](https://github.com/programisto-labs/edrm-exams/compare/v0.3.4...v0.3.5) (2025-08-28)
 
 
