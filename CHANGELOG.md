@@ -1,3 +1,10 @@
+## [0.3.5](https://github.com/programisto-labs/edrm-exams/compare/v0.3.4...v0.3.5) (2025-08-28)
+
+
+### Bug Fixes
+
+* correction prompt with empty responses ([9f5a12c](https://github.com/programisto-labs/edrm-exams/commit/9f5a12ce54d1d5cf1f78867b2f4fe7317f646a80))
+
 ## [0.3.4](https://github.com/programisto-labs/edrm-exams/compare/v0.3.3...v0.3.4) (2025-08-28)
 
 
