@@ -129,7 +129,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     await TestResult.findByIdAndUpdate(result._id, {
       $set: {
         responses: result.responses,
-        score: scorePercentage,
+        score: finalscore,
         state: result.state
       }
     });
@@ -148,7 +148,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
           data: {
             firstname: contact.firstname,
             lastname: contact.lastname,
-            score: result.score,
+            score: scorePercentage,
             testName: test?.title || '',
             testLink
           }
