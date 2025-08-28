@@ -1,3 +1,10 @@
+## [0.3.4](https://github.com/programisto-labs/edrm-exams/compare/v0.3.3...v0.3.4) (2025-08-28)
+
+
+### Bug Fixes
+
+* fix final score in email ([41a539d](https://github.com/programisto-labs/edrm-exams/commit/41a539dc6d1e5d7d06b139660bf6028df401e7b8))
+
 ## [0.3.3](https://github.com/programisto-labs/edrm-exams/compare/v0.3.2...v0.3.3) (2025-08-28)
 
 
