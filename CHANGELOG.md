@@ -1,3 +1,10 @@
+## [0.3.7](https://github.com/programisto-labs/edrm-exams/compare/v0.3.6...v0.3.7) (2025-10-30)
+
+
+### Bug Fixes
+
+* add type question choice for generation ([a88b13c](https://github.com/programisto-labs/edrm-exams/commit/a88b13cf822120fb96bb385fb83bd693588a6998))
+
 ## [0.3.6](https://github.com/programisto-labs/edrm-exams/compare/v0.3.5...v0.3.6) (2025-08-28)
 
 
