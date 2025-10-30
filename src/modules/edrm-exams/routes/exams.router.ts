@@ -81,7 +81,8 @@ class ExamsRouter extends EnduranceRouter {
   private async generateAndSaveQuestion(
     test: ExtendedTest,
     categoryInfo: { categoryId: string, expertiseLevel: string },
-    useAssistant: boolean = false
+    useAssistant: boolean = false,
+    questionTypeOverride?: string
   ): Promise<Document | null> {
     try {
       const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
@@ -99,7 +100,9 @@ class ExamsRouter extends EnduranceRouter {
         job: jobName,
         seniority: test.seniorityLevel,
         category: categoryDoc.name,
-        questionType: ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
+        questionType: (questionTypeOverride && questionTypeOverride !== 'ALL')
+          ? questionTypeOverride
+          : ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
         expertiseLevel: categoryInfo.expertiseLevel,
         otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
       };
@@ -1184,7 +1187,7 @@ class ExamsRouter extends EnduranceRouter {
     // Générer plusieurs questions pour un test
     this.put('/test/generateQuestions/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { numberOfQuestions, category } = req.body;
+      const { numberOfQuestions, category, questionType } = req.body;
 
       if (!numberOfQuestions || numberOfQuestions <= 0) {
         return res.status(400).json({ message: 'Le nombre de questions doit être positif' });
@@ -1229,7 +1232,7 @@ class ExamsRouter extends EnduranceRouter {
           while (questionsGenerated < numberOfQuestions && attempts < maxAttempts) {
             attempts++;
 
-            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true, questionType);
             if (question) {
               generatedQuestions.push(question);
               questionsGenerated++;
@@ -1246,7 +1249,7 @@ class ExamsRouter extends EnduranceRouter {
             const randomCategoryIndex = Math.floor(Math.random() * shuffledCategories.length);
             const categoryInfo = shuffledCategories[randomCategoryIndex];
 
-            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true, questionType);
             if (question) {
               generatedQuestions.push(question);
               questionsGenerated++;
