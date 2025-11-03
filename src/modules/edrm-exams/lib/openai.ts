@@ -1,8 +1,8 @@
-import OpenAI from 'openai';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
+import OpenAI from 'openai';
+import { ChatCompletionCreateParamsNonStreaming, ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import path from 'path';
-import { ChatCompletionMessageParam, ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions';
+import { fileURLToPath } from 'url';
 
 interface CreateQuestionParams {
   job: string;
@@ -32,6 +32,10 @@ interface CorrectQuestionParams {
   };
 }
 
+interface AnalyzeCategoryParams {
+  questionInstruction: string;
+}
+
 interface ContextBuilder {
   createQuestion: (params: CreateQuestionParams) => Promise<Record<string, string>>;
   correctQuestion: (params: CorrectQuestionParams) => Promise<{
@@ -39,6 +43,7 @@ interface ContextBuilder {
     response: string;
     maxScore: number;
   }>;
+  analyzeCategory: (params: AnalyzeCategoryParams) => Promise<Record<string, string>>;
 }
 
 interface OpenAIParams extends Omit<ChatCompletionCreateParamsNonStreaming, 'response_format'> {
@@ -87,12 +92,19 @@ const contextBuilder: ContextBuilder = {
       possibleResponses
     };
     return context;
+  },
+
+  async analyzeCategory({ questionInstruction }: AnalyzeCategoryParams) {
+    const context = {
+      questionInstruction
+    };
+    return context;
   }
 };
 
 export async function generateLiveMessage(
   messageType: keyof ContextBuilder,
-  params: CreateQuestionParams | CorrectQuestionParams,
+  params: CreateQuestionParams | CorrectQuestionParams | AnalyzeCategoryParams,
   json?: boolean
 ): Promise<string> {
   const MAX_RETRY = 2;
@@ -137,7 +149,7 @@ export async function generateLiveMessage(
 export async function generateLiveMessageAssistant(
   assistantId: string,
   messageType: keyof ContextBuilder,
-  params: CreateQuestionParams | CorrectQuestionParams,
+  params: CreateQuestionParams | CorrectQuestionParams | AnalyzeCategoryParams,
   json?: boolean
 ): Promise<string> {
   const MAX_RETRY = 2;

@@ -1,8 +1,8 @@
-import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance-core';
+import { EnduranceAuthMiddleware, EnduranceRouter, SecurityOptions, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance-core';
 import CandidateModel from '../models/candidate.model.js';
+import TestJob from '../models/test-job.model.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
-import TestJob from '../models/test-job.model.js';
 
 // Fonction utilitaire pour récupérer le nom du job
 async function getJobName(targetJob: any): Promise<string> {
@@ -31,6 +31,115 @@ interface CandidateData {
     firstName: string;
     lastName: string;
     email: string;
+}
+
+// Interface pour les statistiques par catégorie
+interface CategoryStats {
+    categoryId: string;
+    categoryName: string;
+    score: number;
+    maxScore: number;
+    percentage: number;
+    questionCount: number;
+    totalQuestions: number;
+}
+
+// Fonction utilitaire pour calculer les statistiques par catégorie
+async function calculateCategoryStats(resultId: string): Promise<{
+    total: { score: number; maxScore: number; percentage: number };
+    byCategory: CategoryStats[];
+}> {
+    const TestQuestion = (await import('../models/test-question.model.js')).default;
+    const TestCategory = (await import('../models/test-category.models.js')).default;
+    const TestResultModel = (await import('../models/test-result.model.js')).default;
+    const TestModel = (await import('../models/test.model.js')).default;
+
+    // Récupérer le résultat
+    const result = await TestResultModel.findById(resultId).lean();
+    if (!result) {
+        throw new Error('Résultat non trouvé');
+    }
+
+    // Récupérer le test associé
+    const test = await TestModel.findById(result.testId).lean();
+    if (!test || !test.questions) {
+        return {
+            total: { score: result.score || 0, maxScore: 0, percentage: 0 },
+            byCategory: []
+        };
+    }
+
+    // Récupérer toutes les questions du test
+    const questionIds = test.questions.map((q: any) => q.questionId || q);
+    const questions = await TestQuestion.find({ _id: { $in: questionIds } }).lean();
+
+    // Créer une map des réponses par questionId
+    const responsesMap = new Map(
+        (result.responses || []).map((r: any) => {
+            const questionId = r.questionId?.toString ? r.questionId.toString() : (r.questionId || '').toString();
+            return [questionId, r];
+        })
+    );
+
+    // Créer une map des catégories par ID
+    const allCategoryIds = Array.from(new Set(questions.map((q: any) => q.categoryId?.toString()).filter(Boolean)));
+    const categoriesDocs = await TestCategory.find({ _id: { $in: allCategoryIds } }).lean();
+    const categoriesMap = new Map(categoriesDocs.map(cat => [cat._id.toString(), cat.name]));
+
+    // Calculer les statistiques par catégorie
+    const categoryStatsMap = new Map<string, { score: number; maxScore: number; questionCount: number }>();
+
+    let totalScore = 0;
+    let totalMaxScore = 0;
+
+    questions.forEach((question: any) => {
+        const categoryId = question.categoryId?.toString();
+        if (!categoryId) return; // Ignorer les questions sans catégorie
+
+        const response = responsesMap.get(question._id.toString());
+        const questionScore = response?.score || 0;
+        const questionMaxScore = question.maxScore || 0;
+
+        if (!categoryStatsMap.has(categoryId)) {
+            categoryStatsMap.set(categoryId, { score: 0, maxScore: 0, questionCount: 0 });
+        }
+
+        const stats = categoryStatsMap.get(categoryId)!;
+        stats.score += questionScore;
+        stats.maxScore += questionMaxScore;
+        stats.questionCount += 1;
+
+        totalScore += questionScore;
+        totalMaxScore += questionMaxScore;
+    });
+
+    // Convertir en tableau avec les noms de catégories
+    const byCategory: CategoryStats[] = Array.from(categoryStatsMap.entries()).map(([categoryId, stats]) => {
+        const categoryName = categoriesMap.get(categoryId) || 'Catégorie inconnue';
+        const percentage = stats.maxScore > 0 ? Math.round((stats.score / stats.maxScore) * 100) : 0;
+
+        return {
+            categoryId,
+            categoryName,
+            score: stats.score,
+            maxScore: stats.maxScore,
+            percentage,
+            questionCount: stats.questionCount,
+            totalQuestions: questions.length
+        };
+    });
+
+    // Calculer le pourcentage total
+    const totalPercentage = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
+
+    return {
+        total: {
+            score: totalScore,
+            maxScore: totalMaxScore,
+            percentage: totalPercentage
+        },
+        byCategory
+    };
 }
 
 class ResultRouter extends EnduranceRouter {
@@ -116,10 +225,21 @@ class ResultRouter extends EnduranceRouter {
                         maxScore = questions.reduce((sum, q) => sum + (q.maxScore || 0), 0);
                     }
                     const { responses, ...resultWithoutResponses } = result;
+
+                    // Calculer les statistiques par catégorie
+                    let categoryStats: { total: { score: number; maxScore: number; percentage: number }; byCategory: CategoryStats[] } | null = null;
+                    try {
+                        const stats = await calculateCategoryStats(result._id.toString());
+                        categoryStats = stats;
+                    } catch (err) {
+                        console.error('Erreur lors du calcul des statistiques par catégorie:', err);
+                    }
+
                     return {
                         ...resultWithoutResponses,
                         testResultId: result._id,
                         maxScore,
+                        categoryStats,
                         test: test
                             ? {
                                 title: test.title,
@@ -147,6 +267,23 @@ class ResultRouter extends EnduranceRouter {
                 });
             } catch (err) {
                 console.error('Erreur lors de la récupération des résultats :', err);
+                res.status(500).json({ message: 'Erreur interne du serveur' });
+            }
+        });
+
+        // Obtenir les statistiques par catégorie pour un résultat spécifique
+        this.get('/result/:id/statsByCategory', authenticatedOptions, async (req: any, res: any) => {
+            try {
+                const { id } = req.params;
+                const stats = await calculateCategoryStats(id);
+                return res.json({
+                    data: stats
+                });
+            } catch (err: any) {
+                console.error('Erreur lors de la récupération des statistiques par catégorie :', err);
+                if (err.message === 'Résultat non trouvé') {
+                    return res.status(404).json({ message: 'Résultat non trouvé' });
+                }
                 res.status(500).json({ message: 'Erreur interne du serveur' });
             }
         });
