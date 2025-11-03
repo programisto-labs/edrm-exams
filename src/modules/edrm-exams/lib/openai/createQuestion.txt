@@ -1,6 +1,10 @@
 Métier ciblé : ${job}
-Catégorie de la question : ${category} niveau ${expertiseLevel} 
+Niveau de séniorité : ${seniority}
 Type de question : ${questionType}
+Niveau d'expertise requis : ${expertiseLevel}
+Catégorie : ${category}
 Format : json
 
 Voici la liste des questions déjà présentes dans le test (pour éviter les doublons) : ${otherQuestions}
+
+Génère une question technique pertinente pour ce métier, ce niveau de séniorité et cette catégorie. La question doit être adaptée à la catégorie spécifiée (ex: Backend, Frontend, etc.).

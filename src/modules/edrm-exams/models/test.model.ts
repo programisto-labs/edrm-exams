@@ -1,8 +1,8 @@
-import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core';
+import { EnduranceModelType, EnduranceSchema } from '@programisto/endurance-core';
 import Company from './company.model.js';
-import TestQuestion from './test-question.model.js';
 import TestCategory from './test-category.models.js';
 import TestJob from './test-job.model.js';
+import TestQuestion from './test-question.model.js';
 import User from './user.model.js';
 
 enum TestState {
@@ -36,6 +36,7 @@ enum ExpertiseLevel {
 
 interface TestQuestions {
     questionId: typeof TestQuestion;
+    categoryId: typeof TestCategory;
     order: number;
 }
 

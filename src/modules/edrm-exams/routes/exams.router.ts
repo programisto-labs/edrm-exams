@@ -1,13 +1,13 @@
-import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance-core';
-import Test from '../models/test.model.js';
-import TestQuestion from '../models/test-question.model.js';
-import TestResult from '../models/test-result.model.js';
-import TestCategory from '../models/test-category.models.js';
-import TestJob from '../models/test-job.model.js';
+import { EnduranceAuthMiddleware, EnduranceRouter, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance-core';
+import { Document, Types } from 'mongoose';
+import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
-import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
-import { Document, Types } from 'mongoose';
+import TestCategory from '../models/test-category.models.js';
+import TestJob from '../models/test-job.model.js';
+import TestQuestion from '../models/test-question.model.js';
+import TestResult from '../models/test-result.model.js';
+import Test from '../models/test.model.js';
 
 // Fonction utilitaire pour récupérer le nom du job
 async function getJobName(targetJob: any): Promise<string> {
@@ -41,6 +41,7 @@ async function migrateTestIfNeeded(test: any): Promise<void> {
 // Définition des types
 interface TestQuestionRef {
   questionId: Types.ObjectId;
+  categoryId: Types.ObjectId;
   order: number;
 }
 
@@ -81,28 +82,29 @@ class ExamsRouter extends EnduranceRouter {
   private async generateAndSaveQuestion(
     test: ExtendedTest,
     categoryInfo: { categoryId: string, expertiseLevel: string },
-    useAssistant: boolean = false,
-    questionTypeOverride?: string
+    useAssistant: boolean = false
   ): Promise<Document | null> {
     try {
-      const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
-      if (!categoryDoc) {
-        console.error('Catégorie non trouvée:', categoryInfo.categoryId);
-        return null;
-      }
-
       // Récupérer les questions existantes pour éviter les doublons
       const otherQuestionsIds = test.questions.map(question => question.questionId);
       const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
       const jobName = await getJobName(test.targetJob);
+
+      // Récupérer la catégorie pour obtenir son nom
+      const categoryDoc = await TestCategory.findById(categoryInfo.categoryId);
+      if (!categoryDoc) {
+        console.error('Catégorie non trouvée pour categoryId:', categoryInfo.categoryId);
+        return null;
+      }
+      const categoryName = categoryDoc.name;
+
+      // Génération de la question avec la catégorie spécifiée
       const questionParams = {
         job: jobName,
         seniority: test.seniorityLevel,
-        category: categoryDoc.name,
-        questionType: (questionTypeOverride && questionTypeOverride !== 'ALL')
-          ? questionTypeOverride
-          : ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
+        category: categoryName, // Utiliser le nom de la catégorie
+        questionType: ['MCQ', 'free question', 'exercice'][Math.floor(Math.random() * 3)],
         expertiseLevel: categoryInfo.expertiseLevel,
         otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
       };
@@ -124,15 +126,57 @@ class ExamsRouter extends EnduranceRouter {
       }
 
       if (generatedQuestion === 'Brain freezed, I cannot generate a live message right now.') {
-        console.error('Échec de génération de question pour la catégorie:', categoryDoc.name);
+        console.error('Échec de génération de question');
         return null;
       }
 
-      const question = new TestQuestion(JSON.parse(generatedQuestion));
+      const questionData = JSON.parse(generatedQuestion);
+
+      console.log('[DEBUG] questionData reçu de l\'IA:', JSON.stringify(questionData, null, 2));
+
+      // Utiliser le categoryId fourni dans categoryInfo
+      const assignedCategoryId = new Types.ObjectId(categoryInfo.categoryId);
+
+      console.log(`[DEBUG] Création de question avec categoryId: ${assignedCategoryId.toString()}`);
+
+      // Créer la question avec le categoryId spécifié (écrase toute valeur dans questionData)
+      // NE PAS inclure questionData.categoryId s'il existe (l'écraser toujours)
+      const questionToCreate: any = {
+        questionType: questionData.questionType,
+        instruction: questionData.instruction,
+        maxScore: questionData.maxScore,
+        time: questionData.time,
+        textType: questionData.textType || 'text',
+        categoryId: assignedCategoryId // TOUJOURS utiliser celui sélectionné
+      };
+
+      // Ajouter possibleResponses uniquement si présent
+      if (questionData.possibleResponses) {
+        questionToCreate.possibleResponses = questionData.possibleResponses;
+      }
+
+      console.log('[DEBUG] Question à créer:', JSON.stringify({
+        ...questionToCreate,
+        categoryId: questionToCreate.categoryId.toString()
+      }, null, 2));
+
+      const question = new TestQuestion(questionToCreate);
       await question.save();
 
-      // Ajouter la question au test et sauvegarder immédiatement
-      test.questions.push({ questionId: question._id, order: test.questions.length });
+      // Vérifier que categoryId a bien été sauvegardé
+      const savedQuestion = await TestQuestion.findById(question._id);
+      if (savedQuestion && savedQuestion.categoryId) {
+        console.log(`[DEBUG] Question ${question._id} sauvegardée avec categoryId: ${savedQuestion.categoryId.toString()}`);
+      } else {
+        console.error(`[ERREUR] Question ${question._id} sauvegardée SANS categoryId !`);
+      }
+
+      // Ajouter la question au test avec le categoryId et sauvegarder immédiatement
+      test.questions.push({
+        questionId: question._id,
+        categoryId: assignedCategoryId, // Toujours utiliser le categoryId sélectionné
+        order: test.questions.length
+      });
       await test.save();
 
       return question;
@@ -266,6 +310,82 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
+    // Migrer les questions pour ajouter le categoryId manquant
+    this.post('/migrate-questions-category', authenticatedOptions, async (req: any, res: any) => {
+      try {
+        const tests = await Test.find();
+        let testsUpdated = 0;
+        let questionsUpdated = 0;
+        let questionsInTestUpdated = 0;
+        let errorCount = 0;
+
+        for (const test of tests) {
+          try {
+            // Si le test a des catégories
+            if (test.categories && test.categories.length > 0) {
+              let testModified = false;
+
+              // Pour chaque question du test
+              for (let i = 0; i < test.questions.length; i++) {
+                const testQuestion = test.questions[i];
+
+                // Vérifier si test.questions n'a pas de categoryId (ou categoryId invalide)
+                const hasCategoryId = testQuestion.categoryId && testQuestion.categoryId.toString();
+
+                if (!hasCategoryId) {
+                  // Récupérer la question elle-même pour voir si elle a un categoryId
+                  const question = await TestQuestion.findById(testQuestion.questionId);
+                  let categoryIdToAssign: any = null;
+
+                  if (question) {
+                    // Si la question a déjà un categoryId, l'utiliser
+                    if (question.categoryId) {
+                      categoryIdToAssign = question.categoryId;
+                    } else {
+                      // Sinon, utiliser la première catégorie du test
+                      categoryIdToAssign = test.categories[0].categoryId;
+                      // Aussi mettre à jour la question elle-même
+                      question.categoryId = categoryIdToAssign;
+                      await question.save();
+                      questionsUpdated++;
+                    }
+                  } else {
+                    // Si la question n'existe pas, utiliser la première catégorie du test
+                    categoryIdToAssign = test.categories[0].categoryId;
+                  }
+
+                  // Mettre à jour test.questions avec le categoryId
+                  (testQuestion as any).categoryId = new Types.ObjectId(categoryIdToAssign);
+                  testModified = true;
+                  questionsInTestUpdated++;
+                }
+              }
+
+              // Sauvegarder le test si modifié
+              if (testModified) {
+                await test.save();
+                testsUpdated++;
+              }
+            }
+          } catch (error) {
+            console.error(`Erreur lors de la migration du test ${test._id}:`, error);
+            errorCount++;
+          }
+        }
+
+        res.status(200).json({
+          message: 'Migration des categoryId terminée',
+          testsUpdated,
+          questionsUpdated,
+          questionsInTestUpdated,
+          errorCount
+        });
+      } catch (err) {
+        console.error('Erreur lors de la migration des categoryId :', err);
+        res.status(500).json({ message: 'Erreur interne du serveur' });
+      }
+    });
+
     // Créer un test
     this.post('/test', authenticatedOptions, async (req: any, res: any) => {
       const { title, description, targetJob, seniorityLevel, categories, state = 'draft' } = req.body;
@@ -382,11 +502,24 @@ class ExamsRouter extends EnduranceRouter {
             });
           }
 
-          // Mettre à jour les questions avec leur ordre
-          test.questions = questions.map((q: any) => ({
-            questionId: q.questionId,
-            order: q.order || 0
-          }));
+          // Créer un Map pour accéder rapidement aux questions par leur ID
+          const questionsMap = new Map(existingQuestions.map(q => [q._id.toString(), q]));
+
+          // Mettre à jour les questions avec leur ordre et categoryId
+          test.questions = questions.map((q: any) => {
+            const questionDoc = questionsMap.get(q.questionId.toString());
+            const categoryId = q.categoryId || questionDoc?.categoryId;
+
+            if (!categoryId) {
+              throw new Error(`categoryId manquant pour la question ${q.questionId}`);
+            }
+
+            return {
+              questionId: q.questionId,
+              categoryId,
+              order: q.order || 0
+            };
+          });
         }
 
         await test.save();
@@ -432,19 +565,104 @@ class ExamsRouter extends EnduranceRouter {
         // Migration automatique si nécessaire
         await migrateTestIfNeeded(test);
 
-        const questions: Document[] = [];
+        const questions: any[] = [];
+        console.log(`[DEBUG] Traitement de ${test.questions.length} questions pour le test ${id}`);
+        console.log('[DEBUG] Structure de test.questions:', JSON.stringify(test.questions[0], null, 2));
+
         for (const questionRef of test.questions) {
-          console.log(questionRef);
-          const question = await TestQuestion.findById(questionRef.questionId);
+          console.log('[DEBUG] questionRef:', {
+            questionId: questionRef.questionId,
+            categoryId: questionRef.categoryId,
+            order: questionRef.order,
+            typeQuestionRefCategoryId: typeof questionRef.categoryId,
+            questionRefKeys: Object.keys(questionRef || {})
+          });
+
+          // Utiliser .lean() pour obtenir un objet plain JavaScript (évite les problèmes de sérialisation)
+          const question = await TestQuestion.findById(questionRef.questionId).lean();
           if (question) {
-            console.log(question);
-            questions.push(question);
+            console.log('[DEBUG] Question trouvée (lean):', {
+              _id: (question as any)._id,
+              categoryId: (question as any).categoryId,
+              typeQuestionCategoryId: typeof (question as any).categoryId,
+              hasCategoryId: !!(question as any).categoryId
+            });
+
+            const questionObj: any = { ...question }; // Copie de l'objet lean
+            console.log('[DEBUG] questionObj après toObject:', {
+              _id: questionObj._id,
+              categoryId: questionObj.categoryId,
+              hasCategoryId: 'categoryId' in questionObj
+            });
+
+            // Fonction helper pour convertir en string
+            const toString = (id: any): string | null => {
+              if (!id) return null;
+              if (typeof id === 'string') return id;
+              if (id.toString) return id.toString();
+              return null;
+            };
+
+            // Enrichir la question avec le categoryId depuis test.questions[] si présent
+            // Prioriser le categoryId de test.questions[] car c'est la source de vérité
+            // Sinon, utiliser le categoryId de la question elle-même
+            // En dernier recours, utiliser la première catégorie du test (pour les anciennes questions)
+            let categoryId: string | null = null;
+            const questionId = (question as any)._id;
+            const questionCategoryId = (question as any).categoryId;
+
+            if (questionRef.categoryId) {
+              categoryId = toString(questionRef.categoryId);
+              console.log(`[DEBUG] Utilisation questionRef.categoryId: ${categoryId}`);
+            } else if (questionCategoryId) {
+              // Fallback 1 : utiliser le categoryId de la question elle-même
+              categoryId = toString(questionCategoryId);
+              console.log(`[DEBUG] Utilisation question.categoryId: ${categoryId}`);
+            } else if (test.categories && test.categories.length > 0) {
+              // Fallback 2 : utiliser la première catégorie du test (pour les anciennes questions sans categoryId)
+              categoryId = toString(test.categories[0].categoryId);
+              console.warn(`[DEBUG] Aucun categoryId trouvé pour la question ${questionId}, utilisation de la première catégorie du test: ${categoryId}`);
+            } else {
+              console.warn(`[DEBUG] AUCUN categoryId trouvé pour la question ${questionId} et aucune catégorie dans le test`);
+            }
+
+            // Toujours définir categoryId (même si null, pour que le frontend le détecte)
+            questionObj.categoryId = categoryId;
+
+            console.log('[DEBUG] questionObj AVANT push:', {
+              _id: questionObj._id || questionId,
+              categoryId: questionObj.categoryId,
+              hasCategoryId: 'categoryId' in questionObj
+            });
+
+            // Ajouter aussi l'ordre de la question dans le test
+            questionObj.order = questionRef.order;
+            questions.push(questionObj);
+          } else {
+            console.warn(`[DEBUG] Question non trouvée pour questionId: ${questionRef.questionId}`);
           }
         }
+
+        console.log(`[DEBUG] Questions finales (${questions.length}):`, questions.map(q => ({
+          _id: q._id,
+          categoryId: q.categoryId,
+          hasCategoryId: 'categoryId' in q
+        })));
 
         // Récupérer le nom du job pour l'affichage
         const testObj = test.toObject();
         (testObj as any).targetJobName = await getJobName(testObj.targetJob);
+
+        // Log final avant envoi pour vérifier que categoryId est bien présent
+        console.log('[DEBUG] Réponse JSON finale - Vérification categoryId:', {
+          nombreQuestions: questions.length,
+          questions: questions.map(q => ({
+            _id: q._id,
+            categoryId: q.categoryId,
+            categoryIdType: typeof q.categoryId,
+            hasCategoryId: 'categoryId' in q
+          }))
+        });
 
         res.status(200).json({ test: testObj, questions });
       } catch (err) {
@@ -639,11 +857,46 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Test not found' });
         }
 
-        const questions: Document[] = [];
-        for (const questionId of test.questions) {
-          const question = await TestQuestion.findById(questionId);
+        const questions: any[] = [];
+        for (const questionRef of test.questions) {
+          // questionRef est maintenant un objet { questionId, categoryId, order }
+          const question = await TestQuestion.findById(questionRef.questionId);
           if (question) {
-            questions.push(question);
+            const questionObj: any = question.toObject();
+
+            // Fonction helper pour convertir en string
+            const toString = (id: any): string | null => {
+              if (!id) return null;
+              if (typeof id === 'string') return id;
+              if (id.toString) return id.toString();
+              return null;
+            };
+
+            // Enrichir la question avec le categoryId depuis test.questions[] si présent
+            // Sinon, utiliser le categoryId de la question elle-même
+            let categoryId: string | null = null;
+            if (questionRef.categoryId) {
+              categoryId = toString(questionRef.categoryId);
+            } else if (question.categoryId) {
+              // Fallback : utiliser le categoryId de la question elle-même
+              categoryId = toString(question.categoryId);
+            }
+
+            // Log de débogage pour diagnostiquer les problèmes
+            if (!categoryId) {
+              console.warn(`[GET /test/questions/:testId] Question ${question._id} n'a pas de categoryId:`, {
+                questionRefCategoryId: questionRef.categoryId,
+                questionCategoryId: question.categoryId,
+                questionRef
+              });
+            }
+
+            // Toujours définir categoryId (même si null, pour que le frontend le détecte)
+            questionObj.categoryId = categoryId;
+
+            // Ajouter aussi l'ordre de la question dans le test
+            questionObj.order = questionRef.order;
+            questions.push(questionObj);
           }
         }
         res.status(200).json({ array: questions });
@@ -728,9 +981,13 @@ class ExamsRouter extends EnduranceRouter {
     // Ajouter une question à un test
     this.put('/test/addCustomQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { questionType, instruction, maxScore, time } = req.body;
+      const { questionType, instruction, maxScore, time, categoryId } = req.body;
 
       try {
+        if (!categoryId) {
+          return res.status(400).json({ message: 'categoryId is required' });
+        }
+
         const test = await Test.findById(id) as ExtendedTest;
 
         if (!test) {
@@ -741,12 +998,17 @@ class ExamsRouter extends EnduranceRouter {
           questionType,
           instruction,
           maxScore,
-          time
+          time,
+          categoryId
         });
 
         await question.save();
 
-        test.questions.push({ questionId: question._id, order: test.questions.length });
+        test.questions.push({
+          questionId: question._id,
+          categoryId,
+          order: test.questions.length
+        });
         await test.save();
 
         res.status(200).json({ message: 'question added in test', test });
@@ -768,6 +1030,12 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
+        // Récupérer la catégorie par son nom pour obtenir l'ID
+        const categoryDoc = await TestCategory.findOne({ name: category });
+        if (!categoryDoc) {
+          return res.status(404).json({ message: 'Category not found' });
+        }
+
         const otherQuestionsIds = test.questions.map(question => question.questionId);
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
@@ -786,10 +1054,36 @@ class ExamsRouter extends EnduranceRouter {
           true
         );
 
-        const question = new TestQuestion(JSON.parse(generatedQuestion));
+        const questionData = JSON.parse(generatedQuestion);
+
+        console.log('[DEBUG addQuestion] questionData reçu de l\'IA:', JSON.stringify(questionData, null, 2));
+        console.log(`[DEBUG addQuestion] Création de question avec categoryId: ${categoryDoc._id.toString()}`);
+
+        // Construire explicitement la question pour s'assurer que categoryId est toujours celui sélectionné
+        const questionToCreate: any = {
+          questionType: questionData.questionType,
+          instruction: questionData.instruction,
+          maxScore: questionData.maxScore,
+          time: questionData.time,
+          textType: questionData.textType || 'text',
+          categoryId: categoryDoc._id // TOUJOURS utiliser celui sélectionné
+        };
+
+        // Ajouter possibleResponses uniquement si présent
+        if (questionData.possibleResponses) {
+          questionToCreate.possibleResponses = questionData.possibleResponses;
+        }
+
+        const question = new TestQuestion(questionToCreate);
         await question.save();
 
-        test.questions.push({ questionId: question._id, order: test.questions.length });
+        console.log(`[DEBUG addQuestion] Question ${question._id} sauvegardée avec categoryId: ${question.categoryId?.toString() || 'MANQUANT'}`);
+
+        test.questions.push({
+          questionId: question._id,
+          categoryId: categoryDoc._id,
+          order: test.questions.length
+        });
         await test.save();
 
         res.status(200).json({ message: 'question added in test', test });
@@ -1187,7 +1481,7 @@ class ExamsRouter extends EnduranceRouter {
     // Générer plusieurs questions pour un test
     this.put('/test/generateQuestions/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { numberOfQuestions, category, questionType } = req.body;
+      const { numberOfQuestions, category } = req.body;
 
       if (!numberOfQuestions || numberOfQuestions <= 0) {
         return res.status(400).json({ message: 'Le nombre de questions doit être positif' });
@@ -1201,12 +1495,28 @@ class ExamsRouter extends EnduranceRouter {
 
         let categoriesToUse: { categoryId: string, expertiseLevel: string }[] = [];
         if (category && category !== 'ALL') {
+          // Chercher d'abord dans les catégories du test
           const categoryInfo = test.categories.find(cat => cat.categoryId.toString() === category);
+
           if (categoryInfo) {
+            // Catégorie trouvée dans test.categories, utiliser son expertiseLevel
             categoriesToUse = [{
               categoryId: categoryInfo.categoryId.toString(),
               expertiseLevel: categoryInfo.expertiseLevel.toString()
             }];
+          } else {
+            // Si pas trouvée dans test.categories, chercher directement dans la collection testcategories
+            const categoryDoc = await TestCategory.findById(category);
+            if (categoryDoc) {
+              // Utiliser 'intermediate' comme expertiseLevel par défaut si pas dans test.categories
+              categoriesToUse = [{
+                categoryId: categoryDoc._id.toString(),
+                expertiseLevel: 'intermediate' // Valeur par défaut
+              }];
+              console.log(`[DEBUG] Catégorie ${categoryDoc.name} trouvée directement dans testcategories`);
+            } else {
+              return res.status(404).json({ message: `Catégorie avec l'ID ${category} non trouvée` });
+            }
           }
         } else {
           // Si category est 'ALL' ou absent, on utilise toutes les catégories du test
@@ -1220,6 +1530,8 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(400).json({ message: 'Aucune catégorie disponible pour générer des questions' });
         }
 
+        console.log(`[DEBUG] Génération de ${numberOfQuestions} question(s) pour la catégorie:`, categoriesToUse[0]);
+
         const generatedQuestions: Document[] = [];
         let questionsGenerated = 0;
         let attempts = 0;
@@ -1232,7 +1544,7 @@ class ExamsRouter extends EnduranceRouter {
           while (questionsGenerated < numberOfQuestions && attempts < maxAttempts) {
             attempts++;
 
-            const question = await this.generateAndSaveQuestion(test, categoryInfo, true, questionType);
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
             if (question) {
               generatedQuestions.push(question);
               questionsGenerated++;
@@ -1249,7 +1561,7 @@ class ExamsRouter extends EnduranceRouter {
             const randomCategoryIndex = Math.floor(Math.random() * shuffledCategories.length);
             const categoryInfo = shuffledCategories[randomCategoryIndex];
 
-            const question = await this.generateAndSaveQuestion(test, categoryInfo, true, questionType);
+            const question = await this.generateAndSaveQuestion(test, categoryInfo, true);
             if (question) {
               generatedQuestions.push(question);
               questionsGenerated++;
@@ -1344,11 +1656,83 @@ class ExamsRouter extends EnduranceRouter {
               return {
                 ...result.toObject(),
                 candidate: null,
-                lastName: ''
+                lastName: '',
+                maxScore,
+                categoryStats: null
               };
             }
 
             const contact = await ContactModel.findById(candidate.contact);
+
+            // Calculer les statistiques par catégorie
+            let categoryStats: { total: { score: number; maxScore: number; percentage: number }; byCategory: any[] } | null = null;
+            try {
+              const TestQuestionForStats = (await import('../models/test-question.model.js')).default;
+              const TestCategoryForStats = (await import('../models/test-category.models.js')).default;
+              const resultObj = result.toObject();
+
+              if (test.questions && test.questions.length > 0) {
+                const questionIds = test.questions.map((q: any) => q.questionId || q);
+                const questions = await TestQuestionForStats.find({ _id: { $in: questionIds } }).lean();
+
+                const responsesMap = new Map(
+                  (resultObj.responses || []).map((r: any) => {
+                    const questionId = r.questionId?.toString ? r.questionId.toString() : (r.questionId || '').toString();
+                    return [questionId, r];
+                  })
+                );
+
+                const allCategoryIds = Array.from(new Set(questions.map((q: any) => q.categoryId?.toString()).filter(Boolean)));
+                const categoriesDocs = await TestCategoryForStats.find({ _id: { $in: allCategoryIds } }).lean();
+                const categoriesMap = new Map(categoriesDocs.map(cat => [cat._id.toString(), cat.name]));
+
+                const categoryStatsMap = new Map<string, { score: number; maxScore: number; questionCount: number }>();
+
+                questions.forEach((question: any) => {
+                  const categoryId = question.categoryId?.toString();
+                  if (!categoryId) return;
+
+                  const response: any = responsesMap.get(question._id.toString());
+                  const questionScore = (response?.score as number) || 0;
+                  const questionMaxScore = question.maxScore || 0;
+
+                  if (!categoryStatsMap.has(categoryId)) {
+                    categoryStatsMap.set(categoryId, { score: 0, maxScore: 0, questionCount: 0 });
+                  }
+
+                  const stats = categoryStatsMap.get(categoryId)!;
+                  stats.score += questionScore;
+                  stats.maxScore += questionMaxScore;
+                  stats.questionCount += 1;
+                });
+
+                const byCategory = Array.from(categoryStatsMap.entries()).map(([categoryId, stats]) => {
+                  const categoryName = categoriesMap.get(categoryId) || 'Catégorie inconnue';
+                  const percentage = stats.maxScore > 0 ? Math.round((stats.score / stats.maxScore) * 100) : 0;
+                  return {
+                    categoryId,
+                    categoryName,
+                    score: stats.score,
+                    maxScore: stats.maxScore,
+                    percentage,
+                    questionCount: stats.questionCount,
+                    totalQuestions: questions.length
+                  };
+                });
+
+                const totalScore = Array.from(categoryStatsMap.values()).reduce((sum, stats) => sum + stats.score, 0);
+                const totalMaxScore = Array.from(categoryStatsMap.values()).reduce((sum, stats) => sum + stats.maxScore, 0);
+                const totalPercentage = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
+
+                categoryStats = {
+                  total: { score: totalScore, maxScore: totalMaxScore, percentage: totalPercentage },
+                  byCategory
+                };
+              }
+            } catch (err) {
+              console.error('Erreur lors du calcul des statistiques par catégorie:', err);
+            }
+
             return {
               ...result.toObject(),
               candidate: contact
@@ -1358,7 +1742,9 @@ class ExamsRouter extends EnduranceRouter {
                   email: contact.email
                 }
                 : null,
-              lastName: contact ? contact.lastname : ''
+              lastName: contact ? contact.lastname : '',
+              maxScore,
+              categoryStats
             };
           }));
 
@@ -1399,11 +1785,8 @@ class ExamsRouter extends EnduranceRouter {
         // Si on a déjà traité les candidats pour le tri par lastName, on utilise directement les résultats
         let resultsWithCandidates;
         if (sortBy === 'lastName') {
-          // Les résultats sont déjà traités avec les données des candidats
-          resultsWithCandidates = results.map(result => ({
-            ...result,
-            maxScore
-          }));
+          // Les résultats sont déjà traités avec les données des candidats et categoryStats
+          resultsWithCandidates = results;
         } else {
           // Récupérer les données des candidats
           const candidateIds = results.map(result => result.candidateId);
@@ -1417,14 +1800,85 @@ class ExamsRouter extends EnduranceRouter {
               return {
                 ...result.toObject(),
                 candidate: null,
-                maxScore
+                maxScore,
+                categoryStats: null
               };
             }
 
             // Récupérer le contact pour obtenir les informations personnelles
             const contact = await ContactModel.findById(candidate.contact);
+            const resultObj = result.toObject();
+
+            // Calculer les statistiques par catégorie (réutilisation de la logique de result.router)
+            let categoryStats: { total: { score: number; maxScore: number; percentage: number }; byCategory: any[] } | null = null;
+            try {
+              const TestQuestionForStats = (await import('../models/test-question.model.js')).default;
+              const TestCategoryForStats = (await import('../models/test-category.models.js')).default;
+
+              if (test.questions && test.questions.length > 0) {
+                const questionIds = test.questions.map((q: any) => q.questionId || q);
+                const questions = await TestQuestionForStats.find({ _id: { $in: questionIds } }).lean();
+
+                const responsesMap = new Map(
+                  (resultObj.responses || []).map((r: any) => {
+                    const questionId = r.questionId?.toString ? r.questionId.toString() : (r.questionId || '').toString();
+                    return [questionId, r];
+                  })
+                );
+
+                const allCategoryIds = Array.from(new Set(questions.map((q: any) => q.categoryId?.toString()).filter(Boolean)));
+                const categoriesDocs = await TestCategoryForStats.find({ _id: { $in: allCategoryIds } }).lean();
+                const categoriesMap = new Map(categoriesDocs.map(cat => [cat._id.toString(), cat.name]));
+
+                const categoryStatsMap = new Map<string, { score: number; maxScore: number; questionCount: number }>();
+
+                questions.forEach((question: any) => {
+                  const categoryId = question.categoryId?.toString();
+                  if (!categoryId) return;
+
+                  const response: any = responsesMap.get(question._id.toString());
+                  const questionScore = (response?.score as number) || 0;
+                  const questionMaxScore = question.maxScore || 0;
+
+                  if (!categoryStatsMap.has(categoryId)) {
+                    categoryStatsMap.set(categoryId, { score: 0, maxScore: 0, questionCount: 0 });
+                  }
+
+                  const stats = categoryStatsMap.get(categoryId)!;
+                  stats.score += questionScore;
+                  stats.maxScore += questionMaxScore;
+                  stats.questionCount += 1;
+                });
+
+                const byCategory = Array.from(categoryStatsMap.entries()).map(([categoryId, stats]) => {
+                  const categoryName = categoriesMap.get(categoryId) || 'Catégorie inconnue';
+                  const percentage = stats.maxScore > 0 ? Math.round((stats.score / stats.maxScore) * 100) : 0;
+                  return {
+                    categoryId,
+                    categoryName,
+                    score: stats.score,
+                    maxScore: stats.maxScore,
+                    percentage,
+                    questionCount: stats.questionCount,
+                    totalQuestions: questions.length
+                  };
+                });
+
+                const totalScore = Array.from(categoryStatsMap.values()).reduce((sum, stats) => sum + stats.score, 0);
+                const totalMaxScore = Array.from(categoryStatsMap.values()).reduce((sum, stats) => sum + stats.maxScore, 0);
+                const totalPercentage = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
+
+                categoryStats = {
+                  total: { score: totalScore, maxScore: totalMaxScore, percentage: totalPercentage },
+                  byCategory
+                };
+              }
+            } catch (err) {
+              console.error('Erreur lors du calcul des statistiques par catégorie:', err);
+            }
+
             return {
-              ...result.toObject(),
+              ...resultObj,
               candidate: contact
                 ? {
                   firstName: contact.firstname,
@@ -1432,7 +1886,8 @@ class ExamsRouter extends EnduranceRouter {
                   email: contact.email
                 }
                 : null,
-              maxScore
+              maxScore,
+              categoryStats
             };
           }));
         }
@@ -1575,6 +2030,78 @@ class ExamsRouter extends EnduranceRouter {
         res.status(200).json({ message: 'TestResult deleted with success' });
       } catch (err) {
         console.error('error when deleting testResult : ', err);
+        res.status(500).json({ message: 'Internal server error' });
+      }
+    });
+
+    // Migration : Ajouter categoryId aux questions d'un test qui n'en ont pas
+    this.post('/test/:id/migrate-category-id', authenticatedOptions, async (req: any, res: any) => {
+      const { id } = req.params;
+
+      try {
+        const test = await Test.findById(id) as ExtendedTest;
+        if (!test) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
+
+        let migratedQuestions = 0;
+        let migratedTestQuestions = 0;
+        let errors = 0;
+        let testNeedsSave = false;
+
+        // Pour chaque question du test
+        for (let i = 0; i < test.questions.length; i++) {
+          const questionRef = test.questions[i];
+          try {
+            const question = await TestQuestion.findById(questionRef.questionId);
+
+            if (!question) continue;
+
+            // Si la question n'a pas de categoryId dans le document TestQuestion
+            if (!question.categoryId) {
+              // Utiliser le categoryId du test.questions[] s'il existe
+              if (questionRef.categoryId) {
+                question.categoryId = questionRef.categoryId;
+                await question.save();
+                migratedQuestions++;
+              } else if (test.categories && test.categories.length > 0) {
+                // Sinon utiliser la première catégorie du test
+                question.categoryId = test.categories[0].categoryId;
+                // Aussi mettre à jour test.questions[]
+                test.questions[i].categoryId = test.categories[0].categoryId;
+                await question.save();
+                migratedQuestions++;
+                testNeedsSave = true;
+              }
+            }
+
+            // Si test.questions[] n'a pas de categoryId mais que la question en a un
+            if (!questionRef.categoryId && question.categoryId) {
+              // Mettre à jour test.questions[]
+              test.questions[i].categoryId = question.categoryId;
+              testNeedsSave = true;
+              migratedTestQuestions++;
+            }
+          } catch (err) {
+            console.error(`Erreur lors de la migration de la question ${questionRef.questionId}:`, err);
+            errors++;
+          }
+        }
+
+        // Sauvegarder le test si des modifications ont été faites
+        if (testNeedsSave) {
+          await test.save();
+        }
+
+        res.status(200).json({
+          message: 'Migration terminée',
+          migratedQuestions,
+          migratedTestQuestions,
+          errors,
+          total: test.questions.length
+        });
+      } catch (err) {
+        console.error('Erreur lors de la migration:', err);
         res.status(500).json({ message: 'Internal server error' });
       }
     });

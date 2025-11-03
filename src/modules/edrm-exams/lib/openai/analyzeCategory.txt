@@ -1,0 +1,33 @@
+Tu es un expert en analyse de questions techniques.
+
+Analyse la question suivante et détermine si elle appartient plutôt au domaine **Back-end** ou **Front-end**.
+
+QUESTION À ANALYSER :
+${questionInstruction}
+
+CRITÈRES D'ANALYSE :
+
+**Back-end** : La question porte sur :
+- Technologies serveur (APIs REST/GraphQL, bases de données, serveurs)
+- Architecture backend (microservices, architecture distribuée)
+- Logique métier côté serveur
+- Bases de données et requêtes SQL/NoSQL
+- Authentification/autorisation côté serveur
+- Performance et optimisation serveur
+- Services backend et APIs
+
+**Front-end** : La question porte sur :
+- Interfaces utilisateur et UX/UI
+- Frameworks et bibliothèques front-end (React, Angular, Vue, etc.)
+- HTML/CSS/JavaScript côté client
+- Interactions utilisateur et événements
+- Responsive design et accessibilité
+- State management front-end
+- Rendu côté client et performance front-end
+
+Réponds UNIQUEMENT avec un JSON au format suivant :
+{
+  "category": "Back-end" ou "Front-end",
+  "confidence": nombre entre 0 et 1 (1 = très confiant, 0.5 = incertain)
+}
+
