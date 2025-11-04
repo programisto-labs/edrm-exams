@@ -1,13 +1,13 @@
-import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance-core';
-import Test from '../models/test.model.js';
-import TestQuestion from '../models/test-question.model.js';
-import TestResult from '../models/test-result.model.js';
-import TestCategory from '../models/test-category.models.js';
-import TestJob from '../models/test-job.model.js';
+import { EnduranceAuthMiddleware, EnduranceRouter, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance-core';
+import { Document, Types } from 'mongoose';
+import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
-import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
-import { Document, Types } from 'mongoose';
+import TestCategory from '../models/test-category.models.js';
+import TestJob from '../models/test-job.model.js';
+import TestQuestion from '../models/test-question.model.js';
+import TestResult from '../models/test-result.model.js';
+import Test from '../models/test.model.js';
 
 // Fonction utilitaire pour récupérer le nom du job
 async function getJobName(targetJob: any): Promise<string> {
@@ -128,7 +128,9 @@ class ExamsRouter extends EnduranceRouter {
         return null;
       }
 
+      // ajouter la catégorie à la question
       const question = new TestQuestion(JSON.parse(generatedQuestion));
+      question.categoryId = categoryInfo.categoryId;
       await question.save();
 
       // Ajouter la question au test et sauvegarder immédiatement
