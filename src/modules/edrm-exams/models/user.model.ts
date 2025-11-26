@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core';
+import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 import Company from './company.model.js';
 
 enum UserRole {

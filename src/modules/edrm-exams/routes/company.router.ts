@@ -1,4 +1,4 @@
-import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions } from '@programisto/endurance-core';
+import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions } from '@programisto/endurance';
 import Company from '../models/company.model.js';
 import UserExam from '../models/user.model.js';
 

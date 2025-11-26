@@ -1,4 +1,4 @@
-import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance-core';
+import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 import Company from './company.model.js';
 import TestQuestion from './test-question.model.js';
 import TestCategory from './test-category.models.js';
