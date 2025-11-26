@@ -11,5 +11,5 @@ const localAppPath = path.join(__dirname, '../lib/app.js');
 if (fs.existsSync(localAppPath)) {
     await import(localAppPath);
 } else {
-    await import('@programisto/endurance-core');
+    await import('@programisto/endurance');
 }
