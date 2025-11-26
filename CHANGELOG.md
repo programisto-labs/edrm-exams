@@ -1,3 +1,11 @@
+## [0.3.8](https://github.com/programisto-labs/edrm-exams/compare/v0.3.7...v0.3.8) (2025-11-26)
+
+
+### Bug Fixes
+
+* upgrade to endurance ([b9fadc8](https://github.com/programisto-labs/edrm-exams/commit/b9fadc81a5f4373a92a237ba6b08e898f9a159e4))
+* upgrade to endurance ([1a499b2](https://github.com/programisto-labs/edrm-exams/commit/1a499b281328c2104ce406b9ac695f010a87930e))
+
 ## [0.3.7](https://github.com/programisto-labs/edrm-exams/compare/v0.3.6...v0.3.7) (2025-10-30)
 
 
