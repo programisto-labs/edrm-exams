@@ -21,7 +21,7 @@ The Endurance Framework is a highly modular and scalable Node.js project templat
 
 ### Installation
 
-1. Install our CLI:
+1. Install our CLI (optionnal):
 
     ```sh
     npm install -g endurance
