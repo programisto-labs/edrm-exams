@@ -55,7 +55,51 @@ class CandidateRouter extends EnduranceRouter {
             permissions: []
         };
 
-        // Créer un nouveau candidat
+        /**
+         * @swagger
+         * /candidates:
+         *   post:
+         *     summary: Créer un candidat
+         *     description: Crée un contact et un candidat ou réutilise un contact existant selon l'email.
+         *     tags: [Candidats]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required: [firstname, lastname, email, city, skills]
+         *             properties:
+         *               firstname:
+         *                 type: string
+         *               lastname:
+         *                 type: string
+         *               email:
+         *                 type: string
+         *               phone:
+         *                 type: string
+         *               linkedin:
+         *                 type: string
+         *               city:
+         *                 type: string
+         *               experienceLevel:
+         *                 type: string
+         *               yearsOfExperience:
+         *                 type: number
+         *               skills:
+         *                 type: array
+         *                 items:
+         *                   type: string
+         *     responses:
+         *       201:
+         *         description: Candidat créé
+         *       200:
+         *         description: Candidat existant retourné
+         *       400:
+         *         description: Paramètres manquants
+         *       500:
+         *         description: Erreur interne
+         */
         this.post('/', authenticatedOptions, async (req: any, res: any) => {
             const { firstname, lastname, email, phone, linkedin, city, experienceLevel, yearsOfExperience, skills } = req.body as CandidateData;
             console.log(req.body);
@@ -145,7 +189,45 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Lister tous les candidats
+        /**
+         * @swagger
+         * /candidates:
+         *   get:
+         *     summary: Lister les candidats
+         *     description: Retourne les candidats avec contact, pagination, recherche et tri.
+         *     tags: [Candidats]
+         *     parameters:
+         *       - in: query
+         *         name: page
+         *         schema:
+         *           type: integer
+         *           default: 1
+         *       - in: query
+         *         name: limit
+         *         schema:
+         *           type: integer
+         *           default: 10
+         *       - in: query
+         *         name: search
+         *         schema:
+         *           type: string
+         *         description: Recherche sur prénom, nom, email
+         *       - in: query
+         *         name: sortBy
+         *         schema:
+         *           type: string
+         *           default: lastname
+         *       - in: query
+         *         name: sortOrder
+         *         schema:
+         *           type: string
+         *           default: asc
+         *     responses:
+         *       200:
+         *         description: Liste paginée des candidats
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const page = parseInt(req.query.page as string) || 1;
@@ -247,7 +329,27 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Obtenir un candidat par son ID
+        /**
+         * @swagger
+         * /candidates/{id}:
+         *   get:
+         *     summary: Détail d'un candidat
+         *     description: Récupère un candidat et son contact par ID.
+         *     tags: [Candidats]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Candidat trouvé
+         *       404:
+         *         description: Candidat non trouvé
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
 
@@ -278,7 +380,27 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Obtenir un candidat par son email
+        /**
+         * @swagger
+         * /candidates/email/{email}:
+         *   get:
+         *     summary: Détail d'un candidat par email
+         *     description: Cherche le contact par email puis retourne le candidat associé.
+         *     tags: [Candidats]
+         *     parameters:
+         *       - in: path
+         *         name: email
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Candidat trouvé
+         *       404:
+         *         description: Contact ou candidat non trouvé
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/email/:email', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const email = req.params.email;
@@ -307,7 +429,33 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Générer un lien magique pour le candidat
+        /**
+         * @swagger
+         * /candidates/magic-link:
+         *   post:
+         *     summary: Générer un lien magique
+         *     description: Génère un token d'accès court pour un candidat et envoie l'email.
+         *     tags: [Candidats]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required: [email]
+         *             properties:
+         *               email:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Lien envoyé
+         *       404:
+         *         description: Contact ou candidat non trouvé
+         *       400:
+         *         description: Email manquant
+         *       500:
+         *         description: Erreur interne
+         */
         this.post('/magic-link', { requireAuth: false }, async (req: any, res: any) => {
             try {
                 const { email } = req.body;
@@ -364,7 +512,33 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Vérifier et consommer le token magique
+        /**
+         * @swagger
+         * /candidates/verify-magic-link:
+         *   post:
+         *     summary: Vérifier un lien magique
+         *     description: Valide le token magique, génère un authToken 24h et retourne le candidat.
+         *     tags: [Candidats]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required: [token]
+         *             properties:
+         *               token:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Authentification réussie
+         *       400:
+         *         description: Token manquant
+         *       401:
+         *         description: Token invalide ou expiré
+         *       500:
+         *         description: Erreur interne
+         */
         this.post('/verify-magic-link', { requireAuth: false }, async (req: any, res: any) => {
             try {
                 const { token } = req.body;
@@ -431,7 +605,52 @@ class CandidateRouter extends EnduranceRouter {
             }
         });
 
-        // Lister tous les résultats de tests d'un candidat
+        /**
+         * @swagger
+         * /candidates/results/{candidateId}:
+         *   get:
+         *     summary: Lister les résultats d'un candidat
+         *     description: Liste paginée des résultats d'un candidat avec filtrage état et tri.
+         *     tags: [Candidats]
+         *     parameters:
+         *       - in: path
+         *         name: candidateId
+         *         required: true
+         *         schema:
+         *           type: string
+         *       - in: query
+         *         name: page
+         *         schema:
+         *           type: integer
+         *           default: 1
+         *       - in: query
+         *         name: limit
+         *         schema:
+         *           type: integer
+         *           default: 10
+         *       - in: query
+         *         name: state
+         *         schema:
+         *           type: string
+         *           default: all
+         *       - in: query
+         *         name: sortBy
+         *         schema:
+         *           type: string
+         *           default: invitationDate
+         *       - in: query
+         *         name: sortOrder
+         *         schema:
+         *           type: string
+         *           default: desc
+         *     responses:
+         *       200:
+         *         description: Résultats paginés
+         *       404:
+         *         description: Candidat non trouvé
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/results/:candidateId', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { candidateId } = req.params;

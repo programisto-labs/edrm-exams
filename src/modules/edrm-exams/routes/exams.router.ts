@@ -147,7 +147,31 @@ class ExamsRouter extends EnduranceRouter {
       requireAuth: false,
       permissions: []
     };
-    // Créer une catégorie
+    /**
+     * @swagger
+     * /exams/categories:
+     *   post:
+     *     summary: Créer une catégorie
+     *     description: Crée une catégorie de test avec son nom.
+     *     tags: [Examens]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required: [name]
+     *             properties:
+     *               name:
+     *                 type: string
+     *     responses:
+     *       201:
+     *         description: Catégorie créée
+     *       400:
+     *         description: Paramètres manquants
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/categories', authenticatedOptions, async (req: any, res: any) => {
       const { name } = req.body;
 
@@ -165,7 +189,19 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Lister toutes les catégories
+    /**
+     * @swagger
+     * /exams/categories:
+     *   get:
+     *     summary: Lister les catégories
+     *     description: Retourne toutes les catégories de test.
+     *     tags: [Examens]
+     *     responses:
+     *       200:
+     *         description: Liste des catégories
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/categories', authenticatedOptions, async (req: any, res: any) => {
       try {
         const categories = await TestCategory.find();
@@ -176,7 +212,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir une catégorie par son ID
+    /**
+     * @swagger
+     * /exams/categorie/{id}:
+     *   get:
+     *     summary: Détail d'une catégorie
+     *     description: Récupère une catégorie par son identifiant.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Catégorie trouvée
+     *       404:
+     *         description: Catégorie non trouvée
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/categorie/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       try {
@@ -191,7 +247,31 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Créer un job type
+    /**
+     * @swagger
+     * /exams/jobs:
+     *   post:
+     *     summary: Créer un job cible
+     *     description: Crée un job cible pour les tests.
+     *     tags: [Examens]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required: [name]
+     *             properties:
+     *               name:
+     *                 type: string
+     *     responses:
+     *       201:
+     *         description: Job créé
+     *       400:
+     *         description: Paramètres manquants
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/jobs', authenticatedOptions, async (req: any, res: any) => {
       const { name } = req.body;
 
@@ -209,7 +289,19 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Lister tous les jobs
+    /**
+     * @swagger
+     * /exams/jobs:
+     *   get:
+     *     summary: Lister les jobs cibles
+     *     description: Retourne l'ensemble des jobs disponibles pour les tests.
+     *     tags: [Examens]
+     *     responses:
+     *       200:
+     *         description: Liste des jobs
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/jobs', authenticatedOptions, async (req: any, res: any) => {
       try {
         const jobs = await TestJob.find();
@@ -220,7 +312,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir un job par son ID
+    /**
+     * @swagger
+     * /exams/jobs/{id}:
+     *   get:
+     *     summary: Détail d'un job
+     *     description: Récupère un job cible par ID.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Job trouvé
+     *       404:
+     *         description: Job non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/jobs/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       try {
@@ -235,7 +347,19 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Migrer tous les tests avec l'ancien format targetJob
+    /**
+     * @swagger
+     * /exams/migrate-targetjobs:
+     *   post:
+     *     summary: Migrer les tests (targetJob)
+     *     description: Convertit les tests utilisant l'ancien format de targetJob vers les références TestJob.
+     *     tags: [Examens]
+     *     responses:
+     *       200:
+     *         description: Migration exécutée
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/migrate-targetjobs', authenticatedOptions, async (req: any, res: any) => {
       try {
         const tests = await Test.find();
@@ -266,7 +390,48 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Créer un test
+    /**
+     * @swagger
+     * /exams/test:
+     *   post:
+     *     summary: Créer un test
+     *     description: Crée un test avec titre, description, job cible, séniorité et catégories.
+     *     tags: [Examens]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required: [title, targetJob, seniorityLevel]
+     *             properties:
+     *               title:
+     *                 type: string
+     *               description:
+     *                 type: string
+     *               targetJob:
+     *                 type: string
+     *               seniorityLevel:
+     *                 type: string
+     *               categories:
+     *                 type: array
+     *                 items:
+     *                   type: object
+     *                   properties:
+     *                     name:
+     *                       type: string
+     *                     expertiseLevel:
+     *                       type: string
+     *               state:
+     *                 type: string
+     *     responses:
+     *       201:
+     *         description: Test créé
+     *       400:
+     *         description: Paramètres manquants
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/test', authenticatedOptions, async (req: any, res: any) => {
       const { title, description, targetJob, seniorityLevel, categories, state = 'draft' } = req.body;
       const user = req.user;
@@ -323,7 +488,35 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Modifier un test
+    /**
+     * @swagger
+     * /exams/test/{id}:
+     *   put:
+     *     summary: Modifier un test
+     *     description: Met à jour les métadonnées, catégories ou questions d'un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *     responses:
+     *       200:
+     *         description: Test modifié
+     *       404:
+     *         description: Test non trouvé
+     *       400:
+     *         description: Données invalides
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { title, description, targetJob, seniorityLevel, categories, state, questions } = req.body;
@@ -397,7 +590,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Supprimer un test
+    /**
+     * @swagger
+     * /exams/test/{id}:
+     *   delete:
+     *     summary: Supprimer un test
+     *     description: Supprime un test ainsi que ses questions et résultats associés.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Test supprimé
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.delete('/test/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -418,7 +631,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir un test par son ID
+    /**
+     * @swagger
+     * /exams/test/{id}:
+     *   get:
+     *     summary: Détail d'un test
+     *     description: Retourne un test avec ses questions et nom du job cible.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Test trouvé
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/test/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -453,7 +686,59 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Lister tous les tests
+    /**
+     * @swagger
+     * /exams:
+     *   get:
+     *     summary: Lister les tests
+     *     description: Liste paginée des tests avec filtres, recherche et tri.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *       - in: query
+     *         name: limit
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *       - in: query
+     *         name: search
+     *         schema:
+     *           type: string
+     *       - in: query
+     *         name: targetJob
+     *         schema:
+     *           type: string
+     *           default: all
+     *       - in: query
+     *         name: seniorityLevel
+     *         schema:
+     *           type: string
+     *           default: all
+     *       - in: query
+     *         name: state
+     *         schema:
+     *           type: string
+     *           default: all
+     *       - in: query
+     *         name: sortBy
+     *         schema:
+     *           type: string
+     *           default: updatedAt
+     *       - in: query
+     *         name: sortOrder
+     *         schema:
+     *           type: string
+     *           default: desc
+     *     responses:
+     *       200:
+     *         description: Tests paginés
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/', authenticatedOptions, async (req: any, res: any) => {
       try {
         const page = parseInt(req.query.page as string) || 1;
@@ -559,7 +844,36 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Supprimer une catégorie d'un test
+    /**
+     * @swagger
+     * /exams/test/removeCategory/{testId}:
+     *   delete:
+     *     summary: Retirer une catégorie d'un test
+     *     description: Supprime une catégorie d'un test par son nom.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               categoryName:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Catégorie supprimée
+     *       404:
+     *         description: Test ou catégorie non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.delete('/test/removeCategory/:testId', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
       const { categoryName } = req.body;
@@ -583,7 +897,38 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Ajouter une catégorie à un test
+    /**
+     * @swagger
+     * /exams/test/addCategory/{testId}:
+     *   put:
+     *     summary: Ajouter une catégorie à un test
+     *     description: Ajoute une catégorie (créée si besoin) à un test avec niveau d'expertise.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               categoryName:
+     *                 type: string
+     *               expertiseLevel:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Catégorie ajoutée
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/addCategory/:testId', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
       const { categoryName, expertiseLevel } = req.body;
@@ -618,7 +963,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir une question par son ID
+    /**
+     * @swagger
+     * /exams/test/question/{questionId}:
+     *   get:
+     *     summary: Détail d'une question
+     *     description: Retourne une question de test par son identifiant.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: questionId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Question trouvée
+     *       404:
+     *         description: Question non trouvée
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/test/question/:questionId', authenticatedOptions, async (req: any, res: any) => {
       const { questionId } = req.params;
       const question = await TestQuestion.findById(questionId);
@@ -628,7 +993,27 @@ class ExamsRouter extends EnduranceRouter {
       res.status(200).json({ data: question });
     });
 
-    // Obtenir toutes les questions d'un test
+    /**
+     * @swagger
+     * /exams/test/questions/{testId}:
+     *   get:
+     *     summary: Lister les questions d'un test
+     *     description: Retourne toutes les questions d'un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Questions retournées
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/test/questions/:testId', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
 
@@ -653,7 +1038,32 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Supprimer une question d'un test
+    /**
+     * @swagger
+     * /exams/test/question/{testId}/{questionId}:
+     *   delete:
+     *     summary: Supprimer une question d'un test
+     *     description: Supprime une question spécifique et réordonne les questions restantes.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: path
+     *         name: questionId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Question supprimée
+     *       404:
+     *         description: Test ou question non trouvés
+     *       500:
+     *         description: Erreur interne
+     */
     this.delete('/test/question/:testId/:questionId', authenticatedOptions, async (req: any, res: any) => {
       const { testId, questionId } = req.params;
       const question = await TestQuestion.findByIdAndDelete(questionId);
@@ -676,7 +1086,27 @@ class ExamsRouter extends EnduranceRouter {
       res.status(200).json({ message: 'question deleted with sucess' });
     });
 
-    // Supprimer toutes les questions d'un test
+    /**
+     * @swagger
+     * /exams/test/questions/{testId}:
+     *   delete:
+     *     summary: Supprimer toutes les questions d'un test
+     *     description: Supprime toutes les questions associées à un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Questions supprimées
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.delete('/test/questions/:testId', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
       const test = await Test.findById(testId);
@@ -691,7 +1121,33 @@ class ExamsRouter extends EnduranceRouter {
       res.status(200).json({ message: 'questions deleted with sucess' });
     });
 
-    // Modifier une question
+    /**
+     * @swagger
+     * /exams/test/modifyQuestion/{id}:
+     *   put:
+     *     summary: Modifier une question
+     *     description: Met à jour les champs d'une question (texte, score, temps, réponses possibles).
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *     responses:
+     *       200:
+     *         description: Question modifiée
+     *       404:
+     *         description: Question non trouvée
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/modifyQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { instruction, maxScore, time, possibleResponses, textType } = req.body;
@@ -725,7 +1181,42 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Ajouter une question à un test
+    /**
+     * @swagger
+     * /exams/test/addCustomQuestion/{id}:
+     *   put:
+     *     summary: Ajouter une question personnalisée
+     *     description: Ajoute une question manuelle à un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               questionType:
+     *                 type: string
+     *               instruction:
+     *                 type: string
+     *               maxScore:
+     *                 type: number
+     *               time:
+     *                 type: number
+     *     responses:
+     *       200:
+     *         description: Question ajoutée
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/addCustomQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { questionType, instruction, maxScore, time } = req.body;
@@ -756,7 +1247,40 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Ajouter une question à un test
+    /**
+     * @swagger
+     * /exams/test/addQuestion/{id}:
+     *   put:
+     *     summary: Générer et ajouter une question
+     *     description: Génère une question via assistant et l'ajoute au test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               questionType:
+     *                 type: string
+     *               category:
+     *                 type: string
+     *               expertiseLevel:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Question générée et ajoutée
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/addQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { questionType, category, expertiseLevel } = req.body;
@@ -799,7 +1323,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Mélanger les questions d'un test
+    /**
+     * @swagger
+     * /exams/test/shuffle/{testId}:
+     *   get:
+     *     summary: Mélanger les questions d'un test
+     *     description: Mélange l'ordre des questions d'un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Questions mélangées
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/test/shuffle/:testId', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
 
@@ -824,7 +1368,36 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Ajouter un texte d'invitation à un test
+    /**
+     * @swagger
+     * /exams/test/addInvitationText/{id}:
+     *   put:
+     *     summary: Ajouter un texte d'invitation
+     *     description: Ajoute ou met à jour le texte d'invitation utilisé pour un test.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               invitationText:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Texte mis à jour
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/addInvitationText/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { invitationText } = req.body;
@@ -849,7 +1422,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir un résultat par son ID
+    /**
+     * @swagger
+     * /exams/result/{id}:
+     *   get:
+     *     summary: Détail d'un résultat
+     *     description: Retourne un TestResult par identifiant.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Résultat trouvé
+     *       404:
+     *         description: Résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/result/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -867,7 +1460,21 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Lister tous les résultats
+    /**
+     * @swagger
+     * /exams/results/:
+     *   get:
+     *     summary: Lister les résultats
+     *     description: Retourne tous les résultats existants.
+     *     tags: [Résultats]
+     *     responses:
+     *       200:
+     *         description: Liste des résultats
+     *       404:
+     *         description: Aucun résultat
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/results/', authenticatedOptions, async (req: any, res: any) => {
       try {
         const results = await TestResult.find();
@@ -881,7 +1488,35 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Créer un résultat
+    /**
+     * @swagger
+     * /exams/invite:
+     *   post:
+     *     summary: Inviter un candidat à un test
+     *     description: Crée un TestResult et envoie un email d'invitation au candidat.
+     *     tags: [Résultats]
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required: [candidateId, testId]
+     *             properties:
+     *               candidateId:
+     *                 type: string
+     *               testId:
+     *                 type: string
+     *     responses:
+     *       201:
+     *         description: Invitation créée
+     *       404:
+     *         description: Test ou candidat non trouvé
+     *       400:
+     *         description: Paramètres manquants
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/invite', authenticatedOptions, async (req: any, res: any) => {
       const { candidateId, testId } = req.body;
 
@@ -947,7 +1582,32 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir la question suivante
+    /**
+     * @swagger
+     * /exams/result/getNextQuestion/{id}/{idCurrentQuestion}:
+     *   get:
+     *     summary: Obtenir la question suivante
+     *     description: Retourne la prochaine question pour un TestResult ou null s'il n'y en a plus.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: path
+     *         name: idCurrentQuestion
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Prochaine question ou null
+     *       404:
+     *         description: Résultat ou test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/result/getNextQuestion/:id/:idCurrentQuestion', authenticatedOptions, async (req: any, res: any) => {
       const { id, idCurrentQuestion } = req.params;
 
@@ -976,7 +1636,32 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Vérifier si c'est la dernière question
+    /**
+     * @swagger
+     * /exams/result/isLastQuestion/{id}/{idCurrentQuestion}:
+     *   get:
+     *     summary: Vérifier la dernière question
+     *     description: Indique si la question courante est la dernière du test.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: path
+     *         name: idCurrentQuestion
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Booléen retourné
+     *       404:
+     *         description: Résultat ou test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/result/isLastQuestion/:id/:idCurrentQuestion', authenticatedOptions, async (req: any, res: any) => {
       const { id, idCurrentQuestion } = req.params;
 
@@ -1004,7 +1689,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir une question
+    /**
+     * @swagger
+     * /exams/result/question/{questionId}:
+     *   get:
+     *     summary: Obtenir une question (résultat)
+     *     description: Retourne une question via son identifiant pour un résultat.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: questionId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Question trouvée
+     *       404:
+     *         description: Question non trouvée
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/result/question/:questionId', authenticatedOptions, async (req: any, res: any) => {
       const { questionId } = req.params;
 
@@ -1022,7 +1727,41 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Envoyer une réponse
+    /**
+     * @swagger
+     * /exams/result/sendResponse/{id}/{idCurrentQuestion}:
+     *   put:
+     *     summary: Envoyer une réponse
+     *     description: Enregistre la réponse d'un candidat pour une question d'un test.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: path
+     *         name: idCurrentQuestion
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               candidateResponse:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Réponse enregistrée
+     *       404:
+     *         description: Test ou résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/result/sendResponse/:id/:idCurrentQuestion', authenticatedOptions, async (req: any, res: any) => {
       const { id, idCurrentQuestion } = req.params;
       const { candidateResponse } = req.body;
@@ -1067,7 +1806,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Corriger un test
+    /**
+     * @swagger
+     * /exams/result/correct/{id}:
+     *   post:
+     *     summary: Lancer la correction d'un test
+     *     description: Déclenche la correction d'un TestResult.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Correction lancée
+     *       404:
+     *         description: Résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/result/correct/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -1084,7 +1843,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Calculer le score
+    /**
+     * @swagger
+     * /exams/result/calculateScore/{id}:
+     *   put:
+     *     summary: Calculer le score
+     *     description: Calcule et enregistre le score final d'un TestResult.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Score calculé
+     *       404:
+     *         description: Résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/result/calculateScore/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -1138,7 +1917,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir le score maximum
+    /**
+     * @swagger
+     * /exams/maxscore/{resultId}:
+     *   get:
+     *     summary: Obtenir le score maximum
+     *     description: Calcule le score maximal possible pour un résultat.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: resultId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Score maximum retourné
+     *       404:
+     *         description: Résultat ou test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/maxscore/:resultId', authenticatedOptions, async (req: any, res: any) => {
       const { resultId } = req.params;
       try {
@@ -1167,7 +1966,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Obtenir le score d'un résultat
+    /**
+     * @swagger
+     * /exams/result/score/{id}:
+     *   get:
+     *     summary: Obtenir le score d'un résultat
+     *     description: Retourne le score calculé d'un TestResult.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Score retourné
+     *       404:
+     *         description: Résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/result/score/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 
@@ -1184,7 +2003,43 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Générer plusieurs questions pour un test
+    /**
+     * @swagger
+     * /exams/test/generateQuestions/{id}:
+     *   put:
+     *     summary: Générer des questions pour un test
+     *     description: Génère plusieurs questions (IA) pour un test donné, éventuellement filtrées par catégorie et type.
+     *     tags: [Examens]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             required: [numberOfQuestions]
+     *             properties:
+     *               numberOfQuestions:
+     *                 type: integer
+     *               category:
+     *                 type: string
+     *               questionType:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Questions générées
+     *       400:
+     *         description: Paramètres invalides
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/test/generateQuestions/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       const { numberOfQuestions, category, questionType } = req.body;
@@ -1275,7 +2130,56 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Lister tous les candidats invités à un test
+    /**
+     * @swagger
+     * /exams/test/{testId}/candidates:
+     *   get:
+     *     summary: Lister les candidats invités
+     *     description: Liste paginée des candidats invités à un test avec filtres et tri.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: testId
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: query
+     *         name: page
+     *         schema:
+     *           type: integer
+     *           default: 1
+     *       - in: query
+     *         name: limit
+     *         schema:
+     *           type: integer
+     *           default: 10
+     *       - in: query
+     *         name: search
+     *         schema:
+     *           type: string
+     *       - in: query
+     *         name: state
+     *         schema:
+     *           type: string
+     *           default: all
+     *       - in: query
+     *         name: sortBy
+     *         schema:
+     *           type: string
+     *           default: invitationDate
+     *       - in: query
+     *         name: sortOrder
+     *         schema:
+     *           type: string
+     *           default: desc
+     *     responses:
+     *       200:
+     *         description: Candidats paginés
+     *       404:
+     *         description: Test non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.get('/test/:testId/candidates', authenticatedOptions, async (req: any, res: any) => {
       const { testId } = req.params;
       const page = parseInt(req.query.page as string) || 1;
@@ -1456,7 +2360,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Renvoyer l'email d'invitation à un candidat
+    /**
+     * @swagger
+     * /exams/reinvite/{resultId}:
+     *   post:
+     *     summary: Renvoyer une invitation
+     *     description: Récupère un TestResult et renvoie l'email d'invitation.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: resultId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Invitation renvoyée
+     *       404:
+     *         description: Ressource non trouvée
+     *       500:
+     *         description: Erreur interne
+     */
     this.post('/reinvite/:resultId', authenticatedOptions, async (req: any, res: any) => {
       const { resultId } = req.params;
 
@@ -1514,7 +2438,45 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Correction manuelle d'une réponse à une question d'un testResult
+    /**
+     * @swagger
+     * /exams/result/{testResultId}/response/{questionId}:
+     *   put:
+     *     summary: Correction manuelle d'une réponse
+     *     description: Met à jour le score/commentaire d'une réponse et recalcule le score global.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: testResultId
+     *         required: true
+     *         schema:
+     *           type: string
+     *       - in: path
+     *         name: questionId
+     *         required: true
+     *         schema:
+     *           type: string
+     *     requestBody:
+     *       required: true
+     *       content:
+     *         application/json:
+     *           schema:
+     *             type: object
+     *             properties:
+     *               score:
+     *                 type: number
+     *               comment:
+     *                 type: string
+     *     responses:
+     *       200:
+     *         description: Correction enregistrée
+     *       404:
+     *         description: Ressource non trouvée
+     *       400:
+     *         description: Score invalide
+     *       500:
+     *         description: Erreur interne
+     */
     this.put('/result/:testResultId/response/:questionId', authenticatedOptions, async (req: any, res: any) => {
       try {
         const { testResultId, questionId } = req.params;
@@ -1561,7 +2523,27 @@ class ExamsRouter extends EnduranceRouter {
       }
     });
 
-    // Supprimer un test result
+    /**
+     * @swagger
+     * /exams/result/{id}:
+     *   delete:
+     *     summary: Supprimer un résultat
+     *     description: Supprime un TestResult.
+     *     tags: [Résultats]
+     *     parameters:
+     *       - in: path
+     *         name: id
+     *         required: true
+     *         schema:
+     *           type: string
+     *     responses:
+     *       200:
+     *         description: Résultat supprimé
+     *       404:
+     *         description: Résultat non trouvé
+     *       500:
+     *         description: Erreur interne
+     */
     this.delete('/result/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
 

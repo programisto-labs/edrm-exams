@@ -44,7 +44,52 @@ class ResultRouter extends EnduranceRouter {
             permissions: []
         };
 
-        // Lister tous les résultats de tests d'un candidat
+        /**
+         * @swagger
+         * /results/{candidateId}:
+         *   get:
+         *     summary: Lister les résultats d'un candidat
+         *     description: Liste paginée des résultats d'un candidat avec filtrage par état et tri.
+         *     tags: [Résultats]
+         *     parameters:
+         *       - in: path
+         *         name: candidateId
+         *         required: true
+         *         schema:
+         *           type: string
+         *       - in: query
+         *         name: page
+         *         schema:
+         *           type: integer
+         *           default: 1
+         *       - in: query
+         *         name: limit
+         *         schema:
+         *           type: integer
+         *           default: 10
+         *       - in: query
+         *         name: state
+         *         schema:
+         *           type: string
+         *           default: all
+         *       - in: query
+         *         name: sortBy
+         *         schema:
+         *           type: string
+         *           default: invitationDate
+         *       - in: query
+         *         name: sortOrder
+         *         schema:
+         *           type: string
+         *           default: desc
+         *     responses:
+         *       200:
+         *         description: Résultats paginés
+         *       404:
+         *         description: Candidat non trouvé
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/results/:candidateId', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { candidateId } = req.params;
@@ -151,7 +196,27 @@ class ResultRouter extends EnduranceRouter {
             }
         });
 
-        // Obtenir les infos de base d'un test (sans les questions), avec categoryName et maxTime
+        /**
+         * @swagger
+         * /results/test/{id}:
+         *   get:
+         *     summary: Obtenir un test sans questions
+         *     description: Récupère un test avec catégories nommées, temps total et nombre de questions.
+         *     tags: [Résultats]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Test trouvé
+         *       404:
+         *         description: Test non trouvé
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/test/:id', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { id } = req.params;
@@ -200,7 +265,32 @@ class ResultRouter extends EnduranceRouter {
             }
         });
 
-        // Obtenir l'ID de la prochaine question non répondue pour un résultat de test
+        /**
+         * @swagger
+         * /results/{id}/nextQuestion:
+         *   get:
+         *     summary: Obtenir la prochaine question
+         *     description: Retourne l'identifiant de la prochaine question non répondue ou "result" s'il n'y en a plus.
+         *     tags: [Résultats]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *       - in: query
+         *         name: currentQuestionId
+         *         schema:
+         *           type: string
+         *         description: Question courante pour avancer dans l'ordre
+         *     responses:
+         *       200:
+         *         description: Prochaine question ou fin
+         *       404:
+         *         description: Ressource non trouvée
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/:id/nextQuestion', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { id } = req.params;
@@ -283,7 +373,34 @@ class ResultRouter extends EnduranceRouter {
             }
         });
 
-        // Afficher une question par son ID (optionnellement vérifier la session)
+        /**
+         * @swagger
+         * /results/question/{idQuestion}:
+         *   get:
+         *     summary: Obtenir une question
+         *     description: Retourne une question; peut vérifier l'appartenance à une session si sessionId est fourni.
+         *     tags: [Résultats]
+         *     parameters:
+         *       - in: path
+         *         name: idQuestion
+         *         required: true
+         *         schema:
+         *           type: string
+         *       - in: query
+         *         name: sessionId
+         *         schema:
+         *           type: string
+         *         description: TestResult pour vérifier l'accès
+         *     responses:
+         *       200:
+         *         description: Question retournée
+         *       404:
+         *         description: Question ou session non trouvée
+         *       403:
+         *         description: Question non autorisée
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/question/:idQuestion', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { idQuestion } = req.params;
@@ -350,7 +467,37 @@ class ResultRouter extends EnduranceRouter {
             }
         });
 
-        // Enregistrer la réponse à une question pour un résultat de test
+        /**
+         * @swagger
+         * /results/response:
+         *   post:
+         *     summary: Enregistrer une réponse
+         *     description: Enregistre une réponse de candidat pour une question d'un TestResult et déclenche la correction si nécessaire.
+         *     tags: [Résultats]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required: [response, questionId, testResultId]
+         *             properties:
+         *               response:
+         *                 type: string
+         *               questionId:
+         *                 type: string
+         *               testResultId:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Réponse enregistrée
+         *       404:
+         *         description: Ressource non trouvée
+         *       403:
+         *         description: Question déjà répondue ou non autorisée
+         *       500:
+         *         description: Erreur interne
+         */
         this.post('/response', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const { response, questionId, testResultId } = req.body;

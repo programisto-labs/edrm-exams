@@ -18,7 +18,27 @@ class CompanyRouter extends EnduranceRouter {
             permissions: []
         };
 
-        // Obtenir une entreprise par son ID
+        /**
+         * @swagger
+         * /companies/{id}:
+         *   get:
+         *     summary: Détail d'une entreprise
+         *     description: Récupère une entreprise par son identifiant.
+         *     tags: [Entreprises]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Entreprise trouvée
+         *       404:
+         *         description: Entreprise non trouvée
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
 
@@ -36,7 +56,33 @@ class CompanyRouter extends EnduranceRouter {
             }
         });
 
-        // Créer une nouvelle entreprise
+        /**
+         * @swagger
+         * /companies/create:
+         *   post:
+         *     summary: Créer une entreprise
+         *     description: Crée une nouvelle entreprise avec nom et logo.
+         *     tags: [Entreprises]
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required: [name, logo]
+         *             properties:
+         *               name:
+         *                 type: string
+         *               logo:
+         *                 type: string
+         *     responses:
+         *       201:
+         *         description: Entreprise créée
+         *       400:
+         *         description: Paramètres manquants
+         *       500:
+         *         description: Erreur interne
+         */
         this.post('/create', authenticatedOptions, async (req: any, res: any) => {
             const { name, logo } = req.body as CompanyData;
 
@@ -54,7 +100,38 @@ class CompanyRouter extends EnduranceRouter {
             }
         });
 
-        // Mettre à jour une entreprise
+        /**
+         * @swagger
+         * /companies/{id}:
+         *   put:
+         *     summary: Mettre à jour une entreprise
+         *     description: Met à jour le nom ou le logo d'une entreprise.
+         *     tags: [Entreprises]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               name:
+         *                 type: string
+         *               logo:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Entreprise mise à jour
+         *       404:
+         *         description: Entreprise non trouvée
+         *       500:
+         *         description: Erreur interne
+         */
         this.put('/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
             const { name, logo } = req.body as CompanyData;
@@ -81,7 +158,27 @@ class CompanyRouter extends EnduranceRouter {
             }
         });
 
-        // Supprimer une entreprise
+        /**
+         * @swagger
+         * /companies/{id}:
+         *   delete:
+         *     summary: Supprimer une entreprise
+         *     description: Supprime une entreprise par son ID.
+         *     tags: [Entreprises]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Entreprise supprimée
+         *       404:
+         *         description: Entreprise non trouvée
+         *       500:
+         *         description: Erreur interne
+         */
         this.delete('/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
 
@@ -97,7 +194,27 @@ class CompanyRouter extends EnduranceRouter {
             }
         });
 
-        // Obtenir le nombre d'utilisateurs d'une entreprise
+        /**
+         * @swagger
+         * /companies/numberOfUser/{id}:
+         *   get:
+         *     summary: Nombre d'utilisateurs d'une entreprise
+         *     description: Retourne le nombre d'utilisateurs associés à l'entreprise.
+         *     tags: [Entreprises]
+         *     parameters:
+         *       - in: path
+         *         name: id
+         *         required: true
+         *         schema:
+         *           type: string
+         *     responses:
+         *       200:
+         *         description: Nombre d'utilisateurs retourné
+         *       404:
+         *         description: Entreprise non trouvée
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/numberOfUser/:id', authenticatedOptions, async (req: any, res: any) => {
             const { id } = req.params;
             try {
@@ -110,7 +227,19 @@ class CompanyRouter extends EnduranceRouter {
             }
         });
 
-        // Lister toutes les entreprises
+        /**
+         * @swagger
+         * /companies:
+         *   get:
+         *     summary: Lister les entreprises
+         *     description: Retourne l'ensemble des entreprises.
+         *     tags: [Entreprises]
+         *     responses:
+         *       200:
+         *         description: Liste des entreprises
+         *       500:
+         *         description: Erreur interne
+         */
         this.get('/', authenticatedOptions, async (req: any, res: any) => {
             try {
                 const companies = await Company.find();
