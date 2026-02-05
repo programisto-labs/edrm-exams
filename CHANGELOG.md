@@ -1,3 +1,11 @@
+## [0.3.9](https://github.com/programisto-labs/edrm-exams/compare/v0.3.8...v0.3.9) (2025-12-17)
+
+
+### Bug Fixes
+
+* add swagger ([3a5b979](https://github.com/programisto-labs/edrm-exams/commit/3a5b9795e1fa7d32e10c1d2991d1d25932538d42))
+* push version ([0608265](https://github.com/programisto-labs/edrm-exams/commit/0608265edc360156d5e0fa049253f26ef6ec5cb7))
+
 ## [0.3.8](https://github.com/programisto-labs/edrm-exams/compare/v0.3.7...v0.3.8) (2025-11-26)
 
 
