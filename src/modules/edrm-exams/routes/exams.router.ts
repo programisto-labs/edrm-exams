@@ -58,6 +58,7 @@ interface ExtendedTest extends Document {
   title: string;
   targetJob: string;
   seniorityLevel: string;
+  entityId?: Types.ObjectId;
 }
 
 // Extension du type Result pour inclure les propriétés manquantes
@@ -478,7 +479,8 @@ class ExamsRouter extends EnduranceRouter {
           targetJob: targetJobId,
           seniorityLevel,
           state,
-          categories: processedCategories
+          categories: processedCategories,
+          ...(req.entity?._id && { entityId: req.entity._id })
         });
         await newTest.save();
         res.status(201).json({ message: 'test created with sucess', data: newTest });
@@ -524,6 +526,10 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const test = await Test.findById(id);
         if (!test) {
+          return res.status(404).json({ message: 'Test non trouvé' });
+        }
+
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 
@@ -619,6 +625,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
         for (let i = 0; i < test.questions.length; i++) {
           await TestQuestion.findByIdAndDelete(test.questions[i].questionId);
         }
@@ -659,6 +668,11 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id);
 
         if (!test) {
+          return res.status(404).json({ message: 'no test founded with this id' });
+        }
+
+        // Vérifier que le test appartient à l'entité courante (multi-entités)
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -753,6 +767,11 @@ class ExamsRouter extends EnduranceRouter {
 
         // Construction de la requête de recherche
         const query: any = {};
+
+        // Filtre par entité (contexte multi-entités)
+        if (req.entity?._id) {
+          query.entityId = req.entity._id;
+        }
 
         // Filtres
         if (targetJob !== 'all') {
@@ -882,13 +901,16 @@ class ExamsRouter extends EnduranceRouter {
         const category = await TestCategory.findOne({ name: categoryName });
         if (!category) return res.status(404).json({ message: 'Category not found' });
 
-        const test = await Test.findByIdAndUpdate(
+        let test = await Test.findById(testId);
+        if (!test) return res.status(404).json({ message: 'Test not found' });
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
+        test = await Test.findByIdAndUpdate(
           testId,
           { $pull: { categories: { categoryId: category._id } } },
           { new: true }
         );
-
-        if (!test) return res.status(404).json({ message: 'Test not found' });
 
         res.status(200).json({ message: 'Category removed', test });
       } catch (err) {
@@ -944,6 +966,9 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(testId) as ExtendedTest;
 
         if (!test) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
+        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
           return res.status(404).json({ message: 'Test not found' });
         }
 
@@ -1023,6 +1048,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
 
         const questions: Document[] = [];
         for (const questionId of test.questions) {
@@ -1074,6 +1102,9 @@ class ExamsRouter extends EnduranceRouter {
       if (!test) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
+      if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        return res.status(404).json({ message: 'no test founded with this id' });
+      }
       // Supprimer la question du tableau questions en filtrant par questionId
       test.questions = test.questions.filter(q => q.questionId.toString() !== questionId);
 
@@ -1111,6 +1142,9 @@ class ExamsRouter extends EnduranceRouter {
       const { testId } = req.params;
       const test = await Test.findById(testId);
       if (!test) {
+        return res.status(404).json({ message: 'no test founded with this id' });
+      }
+      if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
       for (const questionId of test.questions) {
@@ -1227,6 +1261,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
+        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'no test founded with this id' });
+        }
 
         const question = new TestQuestion({
           questionType,
@@ -1291,6 +1328,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
+        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'no test founded with this id' });
+        }
 
         const otherQuestionsIds = test.questions.map(question => question.questionId);
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
@@ -1353,6 +1393,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'Test not found' });
+        }
 
         for (let i = test.questions.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -1406,6 +1449,9 @@ class ExamsRouter extends EnduranceRouter {
         const test = await Test.findById(id) as ExtendedTest;
 
         if (!test) {
+          return res.status(404).json({ message: 'no test founded with this id' });
+        }
+        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -2053,6 +2099,9 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
+        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+          return res.status(404).json({ message: 'Test non trouvé' });
+        }
 
         let categoriesToUse: { categoryId: string, expertiseLevel: string }[] = [];
         if (category && category !== 'ALL') {
@@ -2193,6 +2242,9 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const test = await Test.findById(testId);
         if (!test) {
+          return res.status(404).json({ message: 'Test non trouvé' });
+        }
+        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 

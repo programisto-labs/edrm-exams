@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 import Company from './company.model.js';
 import TestQuestion from './test-question.model.js';
@@ -58,6 +59,10 @@ class Test extends EnduranceSchema {
 
     @EnduranceModelType.prop({ ref: () => Company, required: false })
     public companyId!: typeof Company;
+
+    /** Identifiant de l'entité (portail multi-entités). Optionnel pour rétrocompatibilité. */
+    @EnduranceModelType.prop({ required: false })
+    public entityId?: Types.ObjectId;
 
     @EnduranceModelType.prop({ ref: () => User, required: false })
     public userId!: typeof User;
