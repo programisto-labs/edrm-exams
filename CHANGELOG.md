@@ -1,3 +1,10 @@
+## [0.3.10](https://github.com/programisto-labs/edrm-exams/compare/v0.3.9...v0.3.10) (2026-02-05)
+
+
+### Bug Fixes
+
+* handle multi entity ([c5b7c26](https://github.com/programisto-labs/edrm-exams/commit/c5b7c26073d9469191d02e217bc9bdb3988e3fe7))
+
 ## [0.3.9](https://github.com/programisto-labs/edrm-exams/compare/v0.3.8...v0.3.9) (2025-12-17)
 
 
