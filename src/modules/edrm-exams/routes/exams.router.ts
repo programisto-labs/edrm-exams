@@ -31,6 +31,22 @@ async function getJobName(targetJob: any): Promise<string> {
   return 'Job inconnu';
 }
 
+/** Entité par défaut : les tests sans entityId lui sont rattachés (slug programisto/progamisto ou isDefault). */
+function isDefaultEntity(req: any): boolean {
+  if (!req?.entity) return false;
+  const slug = (req.entity as any).slug;
+  return (req.entity as any).isDefault === true || slug === 'programisto' || slug === 'progamisto';
+}
+
+/** Vérifie qu'un test appartient à l'entité courante (pour GET/UPDATE/DELETE). Pour l'entité par défaut, un test sans entityId est accepté. */
+function testBelongsToEntity(test: any, req: any): boolean {
+  if (!req?.entity?._id) return true;
+  const testEid = test?.entityId?.toString?.() ?? (test?.entityId != null ? String(test.entityId) : '');
+  const reqEid = req.entity._id?.toString?.() ?? String(req.entity._id);
+  if (isDefaultEntity(req)) return testEid === reqEid || testEid === '';
+  return testEid === reqEid;
+}
+
 // Fonction pour migrer automatiquement un test si nécessaire
 async function migrateTestIfNeeded(test: any): Promise<void> {
   if (typeof test.targetJob === 'string') {
@@ -529,7 +545,7 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 
@@ -625,7 +641,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test not found' });
         }
         for (let i = 0; i < test.questions.length; i++) {
@@ -672,7 +688,7 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         // Vérifier que le test appartient à l'entité courante (multi-entités)
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -768,9 +784,21 @@ class ExamsRouter extends EnduranceRouter {
         // Construction de la requête de recherche
         const query: any = {};
 
-        // Filtre par entité (contexte multi-entités)
+        // Filtre par entité. Entité par défaut (programisto/progamisto ou isDefault) = tests sans entityId inclus.
         if (req.entity?._id) {
-          query.entityId = req.entity._id;
+          if (isDefaultEntity(req)) {
+            query.$and = query.$and || [];
+            query.$and.push({
+              $or: [
+                { entityId: req.entity._id },
+                { entityId: (req.entity._id as any).toString?.() ?? String(req.entity._id) },
+                { entityId: { $exists: false } },
+                { entityId: null }
+              ]
+            });
+          } else {
+            query.entityId = req.entity._id;
+          }
         }
 
         // Filtres
@@ -903,7 +931,7 @@ class ExamsRouter extends EnduranceRouter {
 
         let test = await Test.findById(testId);
         if (!test) return res.status(404).json({ message: 'Test not found' });
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test not found' });
         }
         test = await Test.findByIdAndUpdate(
@@ -968,7 +996,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
-        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test not found' });
         }
 
@@ -1048,7 +1076,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test not found' });
         }
 
@@ -1102,7 +1130,7 @@ class ExamsRouter extends EnduranceRouter {
       if (!test) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
-      if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+      if (!testBelongsToEntity(test, req)) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
       // Supprimer la question du tableau questions en filtrant par questionId
@@ -1144,7 +1172,7 @@ class ExamsRouter extends EnduranceRouter {
       if (!test) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
-      if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+      if (!testBelongsToEntity(test, req)) {
         return res.status(404).json({ message: 'no test founded with this id' });
       }
       for (const questionId of test.questions) {
@@ -1261,7 +1289,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
-        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -1328,7 +1356,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
-        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -1393,7 +1421,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test not found' });
         }
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test not found' });
         }
 
@@ -1451,7 +1479,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
-        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
@@ -2099,7 +2127,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
-        if (req.entity?._id && test.entityId && !test.entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 
@@ -2244,7 +2272,7 @@ class ExamsRouter extends EnduranceRouter {
         if (!test) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
-        if (req.entity?._id && (test as any).entityId && !(test as any).entityId.equals(req.entity._id)) {
+        if (!testBelongsToEntity(test, req)) {
           return res.status(404).json({ message: 'Test non trouvé' });
         }
 
