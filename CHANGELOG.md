@@ -1,3 +1,10 @@
+## [0.3.11](https://github.com/programisto-labs/edrm-exams/compare/v0.3.10...v0.3.11) (2026-02-06)
+
+
+### Bug Fixes
+
+* handle default entity ([ddd8a66](https://github.com/programisto-labs/edrm-exams/commit/ddd8a6601d56da886dd10b62f50af4eb9a845ad1))
+
 ## [0.3.10](https://github.com/programisto-labs/edrm-exams/compare/v0.3.9...v0.3.10) (2026-02-05)
 
 
