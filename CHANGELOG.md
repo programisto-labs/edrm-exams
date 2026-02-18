@@ -1,3 +1,10 @@
+## [0.3.12](https://github.com/programisto-labs/edrm-exams/compare/v0.3.11...v0.3.12) (2026-02-18)
+
+
+### Bug Fixes
+
+* add sub score ([444e8c2](https://github.com/programisto-labs/edrm-exams/commit/444e8c2ce60895d5cd73e70e9f62ecbe6e5c856a))
+
 ## [0.3.11](https://github.com/programisto-labs/edrm-exams/compare/v0.3.10...v0.3.11) (2026-02-06)
 
 
