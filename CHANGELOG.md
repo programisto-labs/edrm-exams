@@ -1,3 +1,10 @@
+## [0.3.13](https://github.com/programisto-labs/edrm-exams/compare/v0.3.12...v0.3.13) (2026-02-18)
+
+
+### Bug Fixes
+
+* add invite to test listener ([dc6d867](https://github.com/programisto-labs/edrm-exams/commit/dc6d867b4909807ff0c72d0621662f450991ea05))
+
 ## [0.3.12](https://github.com/programisto-labs/edrm-exams/compare/v0.3.11...v0.3.12) (2026-02-18)
 
 
