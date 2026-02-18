@@ -1,12 +1,13 @@
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance';
 import Test from '../models/test.model.js';
 import TestQuestion from '../models/test-question.model.js';
-import TestResult from '../models/test-result.model.js';
+import TestResult, { type CategoryScore } from '../models/test-result.model.js';
 import TestCategory from '../models/test-category.models.js';
 import TestJob from '../models/test-job.model.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
+import { computeScoresByCategory } from '../lib/score-utils.js';
 import { Document, Types } from 'mongoose';
 
 // Fonction utilitaire pour récupérer le nom du job
@@ -88,6 +89,7 @@ interface ExtendedResult extends Document {
     comment?: string;
   }>;
   score?: number;
+  scoresByCategory?: CategoryScore[];
 }
 
 class ExamsRouter extends EnduranceRouter {
@@ -1212,7 +1214,7 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.put('/test/modifyQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { instruction, maxScore, time, possibleResponses, textType } = req.body;
+      const { instruction, maxScore, time, possibleResponses, textType, categoryId } = req.body;
 
       try {
         const question = await TestQuestion.findById(id);
@@ -1234,6 +1236,17 @@ class ExamsRouter extends EnduranceRouter {
 
         if (possibleResponses) {
           question.possibleResponses = possibleResponses;
+        }
+        if (categoryId !== undefined) {
+          if (categoryId === null || categoryId === '') {
+            question.categoryId = undefined;
+          } else {
+            const category = await TestCategory.findById(categoryId);
+            if (!category) {
+              return res.status(400).json({ message: 'Catégorie non trouvée' });
+            }
+            question.categoryId = categoryId;
+          }
         }
         await question.save();
         res.status(200).json({ message: 'question modified with sucess' });
@@ -1281,7 +1294,7 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.put('/test/addCustomQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { questionType, instruction, maxScore, time } = req.body;
+      const { questionType, instruction, maxScore, time, categoryId } = req.body;
 
       try {
         const test = await Test.findById(id) as ExtendedTest;
@@ -1293,11 +1306,19 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'no test founded with this id' });
         }
 
+        if (categoryId != null && categoryId !== '') {
+          const category = await TestCategory.findById(categoryId);
+          if (!category) {
+            return res.status(400).json({ message: 'Catégorie non trouvée' });
+          }
+        }
+
         const question = new TestQuestion({
           questionType,
           instruction,
           maxScore,
-          time
+          time,
+          ...(categoryId != null && categoryId !== '' ? { categoryId } : {})
         });
 
         await question.save();
@@ -1982,6 +2003,8 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         result.score = finalscore;
+        const { scoresByCategory } = await computeScoresByCategory(result);
+        result.scoresByCategory = scoresByCategory;
         await result.save();
 
         res.status(200).json({ data: finalscore });
@@ -2588,8 +2611,10 @@ class ExamsRouter extends EnduranceRouter {
         if (typeof score === 'number') response.score = score;
         if (typeof comment === 'string') response.comment = comment;
 
-        // Recalculer le score global
-        result.score = (result.responses || []).reduce((sum: number, r: any) => sum + (r.score || 0), 0);
+        // Recalculer le score global et les sous-scores par catégorie
+        const { score: globalScore, scoresByCategory } = await computeScoresByCategory(result);
+        result.score = globalScore;
+        result.scoresByCategory = scoresByCategory;
         await result.save();
 
         return res.status(200).json({

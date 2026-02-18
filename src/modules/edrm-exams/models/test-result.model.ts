@@ -18,6 +18,12 @@ interface Response {
     comment?: string;
 }
 
+export interface CategoryScore {
+    categoryId: ObjectId;
+    score: number;
+    maxScore: number;
+}
+
 @EnduranceModelType.modelOptions({
     options: {
         allowMixed: EnduranceModelType.Severity.ALLOW
@@ -38,6 +44,9 @@ class TestResult extends EnduranceSchema {
 
     @EnduranceModelType.prop()
     public score?: number;
+
+    @EnduranceModelType.prop({ type: [Object], required: false })
+    public scoresByCategory?: CategoryScore[];
 
     @EnduranceModelType.prop()
     public startTime?: Date;

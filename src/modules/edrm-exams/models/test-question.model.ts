@@ -1,4 +1,5 @@
 import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
+import TestCategory from './test-category.models.js';
 
 enum QuestionType {
     // eslint-disable-next-line no-unused-vars
@@ -44,6 +45,9 @@ class TestQuestion extends EnduranceSchema {
 
     @EnduranceModelType.prop({ required: false, enum: TextType, default: TextType.Text })
     public textType!: TextType;
+
+    @EnduranceModelType.prop({ ref: () => TestCategory, required: false })
+    public categoryId?: typeof TestCategory;
 
     public static getModel() {
         return TestQuestionModel;

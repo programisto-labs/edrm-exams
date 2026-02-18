@@ -1,6 +1,7 @@
 import { enduranceListener, enduranceEventTypes, enduranceEmitter } from '@programisto/endurance';
 import TestQuestion from '../models/test-question.model.js';
 import { generateLiveMessageAssistant } from '../lib/openai.js';
+import { computeScoresByCategory } from '../lib/score-utils.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import CandidateModel from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
@@ -131,6 +132,10 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
     // Forcer la sauvegarde des sous-documents responses
     result.markModified('responses');
 
+    // Calculer les sous-scores par catégorie
+    const { scoresByCategory } = await computeScoresByCategory(result);
+    result.scoresByCategory = scoresByCategory;
+
     // Calculer le pourcentage de score en évitant la division par zéro
     let scorePercentage = 0;
     if (maxScore > 0) {
@@ -150,6 +155,7 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
       $set: {
         responses: result.responses,
         score: finalscore,
+        scoresByCategory: result.scoresByCategory,
         state: result.state
       }
     });
