@@ -1,3 +1,11 @@
+## [0.3.14](https://github.com/programisto-labs/edrm-exams/compare/v0.3.13...v0.3.14) (2026-02-19)
+
+
+### Bug Fixes
+
+* upgrade model to gpt5 mini ([a2897a8](https://github.com/programisto-labs/edrm-exams/commit/a2897a8cb7edbca15de157cbb1902e02be8244ab))
+* upgrade model to gpt5 mini ([93b395d](https://github.com/programisto-labs/edrm-exams/commit/93b395d91daf819b55f6424c59b7aa364b8ba680))
+
 ## [0.3.13](https://github.com/programisto-labs/edrm-exams/compare/v0.3.12...v0.3.13) (2026-02-18)
 
 
