@@ -1,6 +1,35 @@
-Métier ciblé : ${job}
-Catégorie de la question : ${category} niveau ${expertiseLevel} 
-Type de question : ${questionType}
-Format : json
+Tu es un assistant qui crée des questions pour un outil de test en ligne.
+L'utilisateur te demande de générer une question avec les critères suivants :
+- Métier ciblé : ${job}
+- Séniorité ciblée : ${seniority}
+- Catégorie (domaine) : ${category}
+- Niveau d'expertise sur cette catégorie : ${expertiseLevel} (sur une échelle : 'beginner' = 1 à 3, 'intermediate' = 3 à 6, 'advanced' = 6 à 10)
+- Type de question demandé : ${questionType}
 
-Voici la liste des questions déjà présentes dans le test (pour éviter les doublons) : ${otherQuestions}
+Contraintes :
+- La question doit obligatoirement être en français.
+- Les instructions et réponses doivent être compatibles avec LaTeX pour affichage dans des balises <MathJax>. Exemple : \\( \\frac{a}{b} = c \\)
+- Le format de réponse doit être un JSON avec uniquement les champs du schéma ci-dessous, sans "_id".
+
+Schéma JSON à produire :
+{
+    "instruction": "string, required",
+    "questionType": "MCQ" | "free question" | "exercice",
+    "maxScore": "number, required",
+    "possibleResponses": [{"possibleResponse": "string", "valid": "boolean"}] // uniquement pour MCQ, 4 réponses dont une seule juste
+    "time": "number, en secondes, required",
+    "textType": "text" | "code" // "code" si la réponse attendue est du code, sinon "text"
+}
+
+Contraintes par type :
+- MCQ : une seule réponse juste sur quatre au total ; time entre 30 s et 1 min.
+- Free Question : ne rien mettre dans possibleResponses ; time entre 30 s et 5 min selon complexité.
+- Exercice : ne rien mettre dans possibleResponses ; time entre 3 et 20 min selon complexité.
+
+- Les instructions et la difficulté doivent être en rapport avec le métier et la séniorité.
+- Le temps (time) doit laisser le temps de répondre sans favoriser la triche (surtout pour les MCQ).
+
+Questions déjà présentes dans le test (éviter les doublons) :
+${otherQuestions}
+
+Génère une question au format JSON correspondant à la demande et au schéma ci-dessus.

@@ -6,7 +6,7 @@ import TestCategory from '../models/test-category.models.js';
 import TestJob from '../models/test-job.model.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
-import { generateLiveMessage, generateLiveMessageAssistant } from '../lib/openai.js';
+import { generateLiveMessage } from '../lib/openai.js';
 import { computeScoresByCategory } from '../lib/score-utils.js';
 import { Document, Types } from 'mongoose';
 
@@ -100,7 +100,7 @@ class ExamsRouter extends EnduranceRouter {
   private async generateAndSaveQuestion(
     test: ExtendedTest,
     categoryInfo: { categoryId: string, expertiseLevel: string },
-    useAssistant: boolean = false,
+    _useAssistant: boolean = false,
     questionTypeOverride?: string
   ): Promise<Document | null> {
     try {
@@ -126,21 +126,11 @@ class ExamsRouter extends EnduranceRouter {
         otherQuestions: otherQuestions.map(question => question.instruction).join('\n')
       };
 
-      let generatedQuestion: string;
-      if (useAssistant) {
-        generatedQuestion = await generateLiveMessageAssistant(
-          process.env.OPENAI_ASSISTANT_ID_CREATE_QUESTION || '',
-          'createQuestion',
-          questionParams,
-          true
-        );
-      } else {
-        generatedQuestion = await generateLiveMessage(
-          'createQuestion',
-          questionParams,
-          true
-        );
-      }
+      const generatedQuestion = await generateLiveMessage(
+        'createQuestion',
+        questionParams,
+        true
+      );
 
       if (generatedQuestion === 'Brain freezed, I cannot generate a live message right now.') {
         console.error('Échec de génération de question pour la catégorie:', categoryDoc.name);
@@ -1385,8 +1375,7 @@ class ExamsRouter extends EnduranceRouter {
         const otherQuestions = await TestQuestion.find({ _id: { $in: otherQuestionsIds } });
 
         const jobName = await getJobName(test.targetJob);
-        const generatedQuestion = await generateLiveMessageAssistant(
-          process.env.OPENAI_ASSISTANT_ID_CREATE_QUESTION || '',
+        const generatedQuestion = await generateLiveMessage(
           'createQuestion',
           {
             job: jobName,
@@ -1975,8 +1964,7 @@ class ExamsRouter extends EnduranceRouter {
           const question = await TestQuestion.findById(response.questionId);
           if (!question) continue;
 
-          const score = await generateLiveMessageAssistant(
-            process.env.OPENAI_ASSISTANT_ID_CORRECT_QUESTION || '',
+          const score = await generateLiveMessage(
             'correctQuestion',
             {
               question: {

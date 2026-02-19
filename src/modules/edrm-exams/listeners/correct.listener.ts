@@ -1,6 +1,6 @@
 import { enduranceListener, enduranceEventTypes, enduranceEmitter } from '@programisto/endurance';
 import TestQuestion from '../models/test-question.model.js';
-import { generateLiveMessageAssistant } from '../lib/openai.js';
+import { generateLiveMessage } from '../lib/openai.js';
 import { computeScoresByCategory } from '../lib/score-utils.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import CandidateModel from '../models/candidate.model.js';
@@ -11,6 +11,43 @@ interface CorrectionResult {
   score: number;
   commentaire: string;
   comment?: string;
+}
+
+const QUESTION_TYPE_MCQ = 'MCQ';
+
+interface McqQuestionLike {
+  questionType: string;
+  possibleResponses?: Array<{ possibleResponse?: string; valid?: boolean }>;
+  maxScore: number;
+}
+
+/**
+ * Pour un QCM avec bonne réponse enregistrée (possibleResponses avec valid: true),
+ * retourne { score, comment } sans appeler OpenAI.
+ * Retourne null si la question n'est pas un QCM corrigeable automatiquement.
+ */
+function correctMcqIfPossible (
+  question: McqQuestionLike,
+  candidateResponse: string
+): { score: number; comment: string } | null {
+  if (question.questionType !== QUESTION_TYPE_MCQ) return null;
+  const possibleResponses = question.possibleResponses;
+  if (!Array.isArray(possibleResponses) || possibleResponses.length === 0) return null;
+  const validIndex = possibleResponses.findIndex((r: { valid?: boolean }) => r.valid === true);
+  if (validIndex === -1) return null;
+
+  const normalizedCandidate = String(candidateResponse ?? '').trim();
+  const validChoice = possibleResponses[validIndex];
+  const validText = (validChoice?.possibleResponse ?? '').trim();
+
+  const isCorrect =
+    normalizedCandidate === validText ||
+    normalizedCandidate === String(validIndex);
+
+  return {
+    score: isCorrect ? question.maxScore : 0,
+    comment: ''
+  };
 }
 
 interface CorrectTestOptions {
@@ -74,44 +111,52 @@ async function correctTest(options: CorrectTestOptions): Promise<void> {
 
       maxScore += question.maxScore;
 
-      const scoreResponse = await generateLiveMessageAssistant(
-        process.env.OPENAI_ASSISTANT_ID_CORRECT_QUESTION || '',
-        'correctQuestion',
-        {
-          question: {
-            _id: question._id.toString(),
-            instruction: question.instruction,
-            possibleResponses: question.possibleResponses,
-            questionType: question.questionType,
-            maxScore: question.maxScore
+      const mcqResult = correctMcqIfPossible(question, dbResponse.response ?? '');
+      let validScore: number;
+      let comment: string;
+
+      if (mcqResult !== null) {
+        validScore = mcqResult.score;
+        comment = mcqResult.comment;
+      } else {
+        const scoreResponse = await generateLiveMessage(
+          'correctQuestion',
+          {
+            question: {
+              _id: question._id.toString(),
+              instruction: question.instruction,
+              possibleResponses: question.possibleResponses,
+              questionType: question.questionType,
+              maxScore: question.maxScore
+            },
+            result: {
+              responses: [{
+                questionId: dbResponse.questionId.toString(),
+                response: dbResponse.response
+              }]
+            }
           },
-          result: {
-            responses: [{
-              questionId: dbResponse.questionId.toString(),
-              response: dbResponse.response
-            }]
+          true
+        );
+
+        console.log('Correction result:', { scoreResponse });
+        const parsedResult: CorrectionResult = JSON.parse(scoreResponse);
+
+        validScore = 0;
+        if (parsedResult.score !== undefined && parsedResult.score !== null) {
+          const score = parseFloat(parsedResult.score.toString());
+          if (!isNaN(score) && isFinite(score) && score >= 0) {
+            validScore = score;
+          } else {
+            console.warn('Invalid score returned by AI:', parsedResult.score);
           }
-        },
-        true
-      );
-
-      console.log('Correction result:', { scoreResponse });
-      const parsedResult: CorrectionResult = JSON.parse(scoreResponse);
-
-      // Valider le score retourné par l'IA
-      let validScore = 0;
-      if (parsedResult.score !== undefined && parsedResult.score !== null) {
-        const score = parseFloat(parsedResult.score.toString());
-        if (!isNaN(score) && isFinite(score) && score >= 0) {
-          validScore = score;
-        } else {
-          console.warn('Invalid score returned by AI:', parsedResult.score);
         }
+        comment = parsedResult.comment || '';
       }
 
       finalscore += validScore;
       dbResponse.score = validScore;
-      dbResponse.comment = parsedResult.comment || '';
+      dbResponse.comment = comment;
     }
 
     // S'assurer que finalscore est un nombre valide

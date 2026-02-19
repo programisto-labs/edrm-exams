@@ -2,7 +2,8 @@ import OpenAI from 'openai';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import path from 'path';
-import { ChatCompletionMessageParam, ChatCompletionCreateParamsNonStreaming } from 'openai/resources/chat/completions';
+
+const DEFAULT_MODEL = 'gpt-5-mini';
 
 interface CreateQuestionParams {
   job: string;
@@ -39,12 +40,6 @@ interface ContextBuilder {
     response: string;
     maxScore: number;
   }>;
-}
-
-interface OpenAIParams extends Omit<ChatCompletionCreateParamsNonStreaming, 'response_format'> {
-  response_format?: {
-    type: 'json_object';
-  };
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -90,6 +85,10 @@ const contextBuilder: ContextBuilder = {
   }
 };
 
+/**
+ * Génère une réponse via l'API Responses (gpt-5-mini).
+ * Pour forcer le JSON : text.format = { type: 'json_object' }.
+ */
 export async function generateLiveMessage(
   messageType: keyof ContextBuilder,
   params: CreateQuestionParams | CorrectQuestionParams,
@@ -107,91 +106,27 @@ export async function generateLiveMessage(
 
   while (retryCount <= MAX_RETRY) {
     try {
-      const openAIParams: OpenAIParams = {
-        model: 'gpt-4-1106-preview',
-        temperature: 0.7,
-        messages: [{ role: 'system', content: message }] as ChatCompletionMessageParam[]
+      const createParams: {
+        model: string;
+        instructions: string;
+        input: string;
+        text?: { format: { type: 'json_object' } };
+      } = {
+        model: DEFAULT_MODEL,
+        instructions: message,
+        input: json ? 'Réponds en JSON uniquement. Traite la demande.' : 'Traite la demande.'
       };
 
       if (json) {
-        openAIParams.response_format = { type: 'json_object' };
+        createParams.text = { format: { type: 'json_object' } };
       }
 
-      const result = await openai.chat.completions.create(openAIParams);
-      const content = result.choices[0].message.content;
-      if (!content) {
+      const result = await openai.responses.create(createParams);
+      const content = result.output_text;
+      if (!content || typeof content !== 'string') {
         throw new Error('No content in response');
       }
       return removeQuotes(content);
-    } catch (error) {
-      retryCount++;
-      console.log(error);
-      if (retryCount > MAX_RETRY) {
-        return 'Brain freezed, I cannot generate a live message right now.';
-      }
-    }
-  }
-  return 'Brain freezed, I cannot generate a live message right now.';
-}
-
-export async function generateLiveMessageAssistant(
-  assistantId: string,
-  messageType: keyof ContextBuilder,
-  params: CreateQuestionParams | CorrectQuestionParams,
-  json?: boolean
-): Promise<string> {
-  const MAX_RETRY = 2;
-  let retryCount = 0;
-
-  // Construire le contexte pour le message
-  const context = await contextBuilder[messageType](params as any);
-  const text = fs.readFileSync(
-    path.join(__dirname, 'openai', `${messageType}.txt`),
-    'utf8'
-  );
-
-  const message = text.replace(/\${(.*?)}/g, (_, v) => context[v]);
-  while (retryCount <= MAX_RETRY) {
-    try {
-      // Créer un thread avec l'assistant
-      const thread = await openai.beta.threads.create();
-
-      // Ajouter le message avec le contexte
-      await openai.beta.threads.messages.create(thread.id, {
-        role: 'user',
-        content: message
-      });
-
-      // Exécuter l'assistant
-      const run = await openai.beta.threads.runs.create(thread.id, {
-        assistant_id: assistantId
-      });
-
-      // Attendre que l'exécution soit terminée
-      let runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-      while (runStatus.status === 'in_progress' || runStatus.status === 'queued') {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        runStatus = await openai.beta.threads.runs.retrieve(thread.id, run.id);
-      }
-
-      if (runStatus.status === 'failed') {
-        throw new Error('Assistant execution failed');
-      }
-
-      // Récupérer les messages de réponse
-      const messages = await openai.beta.threads.messages.list(thread.id);
-      const lastMessage = messages.data[0]; // Le premier message est le plus récent
-
-      if (!lastMessage || !lastMessage.content || lastMessage.content.length === 0) {
-        throw new Error('No content in response');
-      }
-
-      const content = lastMessage.content[0];
-      if (content.type === 'text') {
-        return removeQuotes(content.text.value);
-      } else {
-        throw new Error('Unexpected content type');
-      }
     } catch (error) {
       retryCount++;
       console.log(error);
