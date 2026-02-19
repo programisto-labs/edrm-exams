@@ -1284,7 +1284,7 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.put('/test/addCustomQuestion/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
-      const { questionType, instruction, maxScore, time, categoryId } = req.body;
+      const { questionType, instruction, maxScore, time, categoryId, possibleResponses, textType } = req.body;
 
       try {
         const test = await Test.findById(id) as ExtendedTest;
@@ -1308,7 +1308,9 @@ class ExamsRouter extends EnduranceRouter {
           instruction,
           maxScore,
           time,
-          ...(categoryId != null && categoryId !== '' ? { categoryId } : {})
+          ...(categoryId != null && categoryId !== '' ? { categoryId } : {}),
+          ...(textType != null && textType !== '' ? { textType } : {}),
+          ...(questionType === 'MCQ' && Array.isArray(possibleResponses) ? { possibleResponses } : {})
         });
 
         await question.save();
