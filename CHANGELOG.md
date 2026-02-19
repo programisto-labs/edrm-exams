@@ -1,3 +1,10 @@
+## [0.3.15](https://github.com/programisto-labs/edrm-exams/compare/v0.3.14...v0.3.15) (2026-02-19)
+
+
+### Bug Fixes
+
+* manual qcm ([ba894a8](https://github.com/programisto-labs/edrm-exams/commit/ba894a89657a2c67672d9091620ea787ec39b041))
+
 ## [0.3.14](https://github.com/programisto-labs/edrm-exams/compare/v0.3.13...v0.3.14) (2026-02-19)
 
 
