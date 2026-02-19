@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "@programisto/edrm-exams",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "publishConfig": {
     "access": "public"
   },

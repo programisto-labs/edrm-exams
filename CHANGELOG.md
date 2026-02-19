@@ -1,3 +1,10 @@
+## [0.3.18](https://github.com/programisto-labs/edrm-exams/compare/v0.3.17...v0.3.18) (2026-02-19)
+
+
+### Bug Fixes
+
+* fix invite link and firstname ([a5ec931](https://github.com/programisto-labs/edrm-exams/commit/a5ec93134636fc80ad19800d6494707cc1941bf1))
+
 ## [0.3.17](https://github.com/programisto-labs/edrm-exams/compare/v0.3.16...v0.3.17) (2026-02-19)
 
 
