@@ -1,3 +1,10 @@
+## [0.3.16](https://github.com/programisto-labs/edrm-exams/compare/v0.3.15...v0.3.16) (2026-02-19)
+
+
+### Bug Fixes
+
+* add candidate from other entity ([ff5bca3](https://github.com/programisto-labs/edrm-exams/commit/ff5bca3f1c69e2a63a7fe754d3ff26b435f99e0d))
+
 ## [0.3.15](https://github.com/programisto-labs/edrm-exams/compare/v0.3.14...v0.3.15) (2026-02-19)
 
 
