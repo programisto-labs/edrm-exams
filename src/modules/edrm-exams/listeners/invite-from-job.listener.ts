@@ -12,6 +12,8 @@ interface InvitePayload {
   testId: string | { toString: () => string };
   /** Identifiant de l'entité pour utiliser le template mail de l'entité (ex. École de Turing). */
   entityId?: Types.ObjectId | string;
+  /** Base du lien d'invitation (ex. https://app.ecoledeturing.fr/magic?email=). Si fourni, utilisé à la place de TEST_INVITATION_LINK. */
+  testInvitationLinkBase?: string;
 }
 
 /**
@@ -68,7 +70,8 @@ async function inviteCandidateToTest (payload: InvitePayload): Promise<void> {
     return;
   }
 
-  const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
+  const linkBase = (payload as InvitePayload).testInvitationLinkBase ?? process.env.TEST_INVITATION_LINK ?? '';
+  const testLink = linkBase + email;
   const emailUser = process.env.EMAIL_USER;
   const emailPassword = process.env.EMAIL_PASSWORD;
 

@@ -8,6 +8,7 @@ import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import { computeScoresByCategory } from '../lib/score-utils.js';
+import { getTestInvitationLinkBase } from '../lib/test-invitation-link.js';
 import { Document, Types } from 'mongoose';
 
 // Fonction utilitaire pour récupérer le nom du job
@@ -1660,8 +1661,9 @@ class ExamsRouter extends EnduranceRouter {
 
         const email = contact.email;
 
-        // Construire le lien d'invitation
-        const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
+        // Construire le lien d'invitation (URL de l'entité ou défaut env)
+        const testLinkBase = getTestInvitationLinkBase(req.entity);
+        const testLink = testLinkBase + email;
 
         // Récupérer les credentials d'envoi
         const emailUser = process.env.EMAIL_USER;
@@ -2529,8 +2531,9 @@ class ExamsRouter extends EnduranceRouter {
         const emailUser = process.env.EMAIL_USER;
         const emailPassword = process.env.EMAIL_PASSWORD;
 
-        // Construire le lien d'invitation
-        const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
+        // Construire le lien d'invitation (URL de l'entité ou défaut env)
+        const testLinkBase = getTestInvitationLinkBase(req.entity);
+        const testLink = testLinkBase + email;
 
         // Envoyer l'email via l'event emitter (entityId pour utiliser le template de l'entité courante)
         const entityIdForReinvite = req.entity?._id != null
@@ -2544,6 +2547,8 @@ class ExamsRouter extends EnduranceRouter {
           emailPassword,
           ...(entityIdForReinvite && { entityId: entityIdForReinvite }),
           data: {
+            firstname: contact.firstname,
+            testName: test?.title || '',
             testLink
           }
         });
