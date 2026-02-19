@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { enduranceListener, enduranceEmitter, enduranceEventTypes } from '@programisto/endurance';
 import Test from '../models/test.model.js';
 import TestResult from '../models/test-result.model.js';
@@ -9,6 +10,8 @@ const EVENT_INVITE_TO_TECHNICAL_TEST = 'INVITE_TO_TECHNICAL_TEST';
 interface InvitePayload {
   candidateId: string | { toString: () => string };
   testId: string | { toString: () => string };
+  /** Identifiant de l'entité pour utiliser le template mail de l'entité (ex. École de Turing). */
+  entityId?: Types.ObjectId | string;
 }
 
 /**
@@ -69,12 +72,19 @@ async function inviteCandidateToTest (payload: InvitePayload): Promise<void> {
   const emailUser = process.env.EMAIL_USER;
   const emailPassword = process.env.EMAIL_PASSWORD;
 
+  const entityIdForMail = (payload as InvitePayload).entityId != null
+    ? ((payload as InvitePayload).entityId instanceof Types.ObjectId
+        ? (payload as InvitePayload).entityId
+        : new Types.ObjectId(String((payload as InvitePayload).entityId)))
+    : undefined;
+
   await enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
     template: 'test-invitation',
     to: email,
     from: emailUser,
     emailUser,
     emailPassword,
+    ...(entityIdForMail && { entityId: entityIdForMail }),
     data: {
       firstname: (contact as any).firstname,
       testName: (test as any)?.title || '',

@@ -1667,13 +1667,17 @@ class ExamsRouter extends EnduranceRouter {
         const emailUser = process.env.EMAIL_USER;
         const emailPassword = process.env.EMAIL_PASSWORD;
 
-        // Envoyer l'email via l'event emitter
+        // Envoyer l'email via l'event emitter (entityId pour utiliser le template de l'entité courante, ex. École de Turing)
+        const entityIdForMail = req.entity?._id != null
+          ? (req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id)))
+          : undefined;
         await emitter.emit(eventTypes.SEND_EMAIL, {
           template: 'test-invitation',
           to: email,
           from: emailUser,
           emailUser,
           emailPassword,
+          ...(entityIdForMail && { entityId: entityIdForMail }),
           data: {
             firstname: contact.firstname,
             testName: test?.title || '',
@@ -2528,13 +2532,17 @@ class ExamsRouter extends EnduranceRouter {
         // Construire le lien d'invitation
         const testLink = (process.env.TEST_INVITATION_LINK || '') + email;
 
-        // Envoyer l'email via l'event emitter
+        // Envoyer l'email via l'event emitter (entityId pour utiliser le template de l'entité courante)
+        const entityIdForReinvite = req.entity?._id != null
+          ? (req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id)))
+          : undefined;
         await emitter.emit(eventTypes.SEND_EMAIL, {
           template: 'test-invitation',
           to: email,
           from: emailUser,
           emailUser,
           emailPassword,
+          ...(entityIdForReinvite && { entityId: entityIdForReinvite }),
           data: {
             testLink
           }

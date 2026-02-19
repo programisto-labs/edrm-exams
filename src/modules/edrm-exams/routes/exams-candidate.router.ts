@@ -29,6 +29,29 @@ async function getJobName(targetJob: any): Promise<string> {
     return 'Job inconnu';
 }
 
+/** Entité par défaut : candidats sans entityId lui sont rattachés. */
+function isDefaultEntity(req: any): boolean {
+    if (!req?.entity) return false;
+    const slug = (req.entity as any).slug;
+    return (req.entity as any).isDefault === true || slug === 'programisto' || slug === 'progamisto';
+}
+
+/** Filtre MongoDB pour les candidats de l'entité courante (évite les doublons quand un même contact existe sur plusieurs entités). */
+function buildCandidateEntityFilter(req: any): Record<string, unknown> {
+    if (!req?.entity?._id) return {};
+    const eid = req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id));
+    if (isDefaultEntity(req)) {
+        return {
+            $or: [
+                { entityId: eid },
+                { entityId: null },
+                { entityId: { $exists: false } }
+            ]
+        };
+    }
+    return { entityId: eid };
+}
+
 interface CandidateData {
     // Informations de contact
     firstname: string;
@@ -237,6 +260,8 @@ class CandidateRouter extends EnduranceRouter {
                 const sortBy = req.query.sortBy as string || 'lastname';
                 const sortOrder = req.query.sortOrder as string || 'asc';
 
+                const entityFilter = buildCandidateEntityFilter(req);
+
                 let contactIds: Types.ObjectId[] = [];
                 let total = 0;
 
@@ -253,11 +278,11 @@ class CandidateRouter extends EnduranceRouter {
                     const contacts = await ContactModel.find(contactQuery);
                     contactIds = contacts.map(contact => contact._id);
 
-                    // Compter les candidats avec ces contacts
-                    total = await CandidateModel.countDocuments({ contact: { $in: contactIds } });
+                    // Compter les candidats avec ces contacts (scopé entité : éviter doublons multi-entités)
+                    total = await CandidateModel.countDocuments({ contact: { $in: contactIds }, ...entityFilter });
                 } else {
-                    // Pas de recherche, compter tous les candidats
-                    total = await CandidateModel.countDocuments();
+                    // Pas de recherche, compter tous les candidats (scopé entité)
+                    total = await CandidateModel.countDocuments(entityFilter);
                 }
 
                 // Construction du tri pour les contacts
@@ -266,14 +291,14 @@ class CandidateRouter extends EnduranceRouter {
 
                 let candidates;
                 if (search && contactIds.length > 0) {
-                    // Récupérer les candidats avec les contacts trouvés
-                    candidates = await CandidateModel.find({ contact: { $in: contactIds } })
+                    // Récupérer les candidats avec les contacts trouvés (un seul par contact/entité)
+                    candidates = await CandidateModel.find({ contact: { $in: contactIds }, ...entityFilter })
                         .skip(skip)
                         .limit(limit)
                         .exec();
                 } else if (!search) {
-                    // Récupérer tous les candidats
-                    candidates = await CandidateModel.find()
+                    // Récupérer les candidats de l'entité courante
+                    candidates = await CandidateModel.find(entityFilter)
                         .skip(skip)
                         .limit(limit)
                         .exec();
