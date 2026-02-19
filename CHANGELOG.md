@@ -1,3 +1,10 @@
+## [0.3.17](https://github.com/programisto-labs/edrm-exams/compare/v0.3.16...v0.3.17) (2026-02-19)
+
+
+### Bug Fixes
+
+* add entity on invitation email ([7bd8c20](https://github.com/programisto-labs/edrm-exams/commit/7bd8c2044451c8bd003654a01047fe7d5366d2a4))
+
 ## [0.3.16](https://github.com/programisto-labs/edrm-exams/compare/v0.3.15...v0.3.16) (2026-02-19)
 
 
