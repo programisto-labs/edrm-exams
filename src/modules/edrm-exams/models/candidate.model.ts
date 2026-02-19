@@ -17,6 +17,9 @@ export enum ExperienceLevel {
     }
 })
 class Candidate extends EnduranceSchema {
+    @EnduranceModelType.prop({ type: Types.ObjectId, ref: 'Entity', required: false })
+    public entityId?: Types.ObjectId;
+
     @EnduranceModelType.prop({ required: true, ref: 'Contact' })
     public contact!: Types.ObjectId;
 

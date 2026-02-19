@@ -1616,10 +1616,41 @@ class ExamsRouter extends EnduranceRouter {
           return res.status(404).json({ message: 'Test not found' });
         }
 
-        const categories = test.categories.map(cat => ({ categoryId: cat.categoryId }));
+        // Récupérer le candidat et le contact (avant de créer le TestResult pour pouvoir utiliser le candidat scopé entité)
+        const candidate = await Candidate.findById(candidateId);
+        if (!candidate) {
+          return res.status(404).json({ message: 'Candidate not found' });
+        }
+
+        const contact = await ContactModel.findById(candidate.contact);
+        if (!contact) {
+          return res.status(404).json({ message: 'Contact not found' });
+        }
+
+        // Multi-entité : s'assurer qu'un Candidate existe pour l'entité courante (même contact).
+        // Permet à un candidat déjà présent sur une autre entité de se connecter à l'espace candidat de cette entité.
+        let entityCandidate = candidate;
+        if (req.entity?._id) {
+          const entityId = req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id));
+          const existing = await Candidate.findOne({ contact: contact._id, entityId });
+          if (!existing) {
+            entityCandidate = new Candidate({
+              contact: contact._id,
+              entityId,
+              skills: Array.isArray((candidate as any).skills) ? (candidate as any).skills : [],
+              experienceLevel: (candidate as any).experienceLevel,
+              yearsOfExperience: (candidate as any).yearsOfExperience ?? 0
+            });
+            await entityCandidate.save();
+          } else {
+            entityCandidate = existing;
+          }
+        }
+
+        const categories = test.categories.map((cat: any) => ({ categoryId: cat.categoryId }));
 
         const newResult = new TestResult({
-          candidateId,
+          candidateId: entityCandidate._id,
           testId,
           categories,
           state: 'pending',
@@ -1627,17 +1658,6 @@ class ExamsRouter extends EnduranceRouter {
         });
         await newResult.save();
 
-        // Récupérer l'email du candidat
-        const candidate = await Candidate.findById(candidateId);
-        if (!candidate) {
-          return res.status(404).json({ message: 'Candidate not found' });
-        }
-
-        // Récupérer le contact pour obtenir l'email
-        const contact = await ContactModel.findById(candidate.contact);
-        if (!contact) {
-          return res.status(404).json({ message: 'Contact not found' });
-        }
         const email = contact.email;
 
         // Construire le lien d'invitation
