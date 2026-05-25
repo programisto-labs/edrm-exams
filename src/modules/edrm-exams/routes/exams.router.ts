@@ -9,6 +9,7 @@ import ContactModel from '../models/contact.model.js';
 import { generateLiveMessage } from '../lib/openai.js';
 import { computeScoresByCategory } from '../lib/score-utils.js';
 import { getTestInvitationLinkBase } from '../lib/test-invitation-link.js';
+import jwt from 'jsonwebtoken';
 import { Document, Types } from 'mongoose';
 
 // Fonction utilitaire pour récupérer le nom du job
@@ -31,6 +32,55 @@ async function getJobName(targetJob: any): Promise<string> {
   }
 
   return 'Job inconnu';
+}
+
+function appendSlugIfMissing(link: string, slug?: unknown): string {
+  if (typeof slug !== 'string' || slug.trim() === '') return link;
+  if (/[?&]slug=/.test(link)) return link;
+  const sep = link.includes('?') ? '&' : '?';
+  return `${link}${sep}slug=${encodeURIComponent(slug.trim())}`;
+}
+
+function appendRedirectUrlIfMissing(link: string, testId: unknown, resultId: unknown): string {
+  if (!testId || !resultId) return link;
+  if (/[?&]redirectUrl=/.test(link)) return link;
+  const redirectTarget = `/test/${encodeURIComponent(String(testId))}?sessionId=${encodeURIComponent(String(resultId))}`;
+  const sep = link.includes('?') ? '&' : '?';
+  return `${link}${sep}redirectUrl=${encodeURIComponent(redirectTarget)}`;
+}
+
+async function resolveInvitationLinkOverride(
+  body: any,
+  fallback: string,
+  email: string,
+  candidate: any,
+  entitySlug?: unknown,
+  testId?: unknown,
+  resultId?: unknown
+): Promise<string> {
+  const override = body?.invitationLink;
+  if (typeof override === 'string' && override.trim() !== '') {
+    return appendRedirectUrlIfMissing(override.trim(), testId, resultId);
+  }
+
+  // Keep historical fallback for legacy links (?email=), but generate JWT when base expects ?token=
+  if (/[?&]token=$/.test(fallback)) {
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const token = jwt.sign(
+      { email, expiresAt: expiresAt.toISOString() },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    if (candidate) {
+      candidate.magicLinkToken = token;
+      candidate.magicLinkExpiresAt = expiresAt;
+      await candidate.save();
+    }
+    const withSlug = appendSlugIfMissing(`${fallback}${encodeURIComponent(token)}`, entitySlug);
+    return appendRedirectUrlIfMissing(withSlug, testId, resultId);
+  }
+
+  return appendRedirectUrlIfMissing(`${fallback}${email}`, testId, resultId);
 }
 
 /** Entité par défaut : les tests sans entityId lui sont rattachés (slug programisto/progamisto ou isDefault). */
@@ -1663,7 +1713,15 @@ class ExamsRouter extends EnduranceRouter {
 
         // Construire le lien d'invitation (URL de l'entité ou défaut env)
         const testLinkBase = getTestInvitationLinkBase(req.entity);
-        const testLink = testLinkBase + email;
+        const testLink = await resolveInvitationLinkOverride(
+          req.body,
+          testLinkBase,
+          email,
+          entityCandidate,
+          req.entity?.slug,
+          testId,
+          newResult._id
+        );
 
         // Récupérer les credentials d'envoi
         const emailUser = process.env.EMAIL_USER;
@@ -2533,7 +2591,15 @@ class ExamsRouter extends EnduranceRouter {
 
         // Construire le lien d'invitation (URL de l'entité ou défaut env)
         const testLinkBase = getTestInvitationLinkBase(req.entity);
-        const testLink = testLinkBase + email;
+        const testLink = await resolveInvitationLinkOverride(
+          req.body,
+          testLinkBase,
+          email,
+          candidate,
+          req.entity?.slug,
+          result.testId,
+          result._id
+        );
 
         // Envoyer l'email via l'event emitter (entityId pour utiliser le template de l'entité courante)
         const entityIdForReinvite = req.entity?._id != null

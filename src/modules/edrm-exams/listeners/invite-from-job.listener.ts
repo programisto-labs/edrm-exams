@@ -12,8 +12,18 @@ interface InvitePayload {
   testId: string | { toString: () => string };
   /** Identifiant de l'entité pour utiliser le template mail de l'entité (ex. École de Turing). */
   entityId?: Types.ObjectId | string;
+  /** Lien complet déjà construit par internal-portal (prioritaire si fourni). */
+  invitationLink?: string;
   /** Base du lien d'invitation (ex. https://app.ecoledeturing.fr/magic?email=). Si fourni, utilisé à la place de TEST_INVITATION_LINK. */
   testInvitationLinkBase?: string;
+}
+
+function appendRedirectUrlIfMissing(link: string, testId: string, resultId: string): string {
+  if (!link) return link;
+  if (/[?&]redirectUrl=/.test(link)) return link;
+  const redirectTarget = `/test/${encodeURIComponent(testId)}?sessionId=${encodeURIComponent(resultId)}`;
+  const sep = link.includes('?') ? '&' : '?';
+  return `${link}${sep}redirectUrl=${encodeURIComponent(redirectTarget)}`;
 }
 
 /**
@@ -70,15 +80,20 @@ async function inviteCandidateToTest (payload: InvitePayload): Promise<void> {
     return;
   }
 
-  const linkBase = (payload as InvitePayload).testInvitationLinkBase ?? process.env.TEST_INVITATION_LINK ?? '';
-  const testLink = linkBase + email;
+  const payloadData = payload as InvitePayload;
+  const invitationLinkOverride = typeof payloadData.invitationLink === 'string'
+    ? payloadData.invitationLink.trim()
+    : '';
+  const linkBase = payloadData.testInvitationLinkBase ?? process.env.TEST_INVITATION_LINK ?? '';
+  const rawTestLink = invitationLinkOverride || (linkBase + email);
+  const testLink = appendRedirectUrlIfMissing(rawTestLink, testId, String(newResult._id));
   const emailUser = process.env.EMAIL_USER;
   const emailPassword = process.env.EMAIL_PASSWORD;
 
-  const entityIdForMail = (payload as InvitePayload).entityId != null
-    ? ((payload as InvitePayload).entityId instanceof Types.ObjectId
-        ? (payload as InvitePayload).entityId
-        : new Types.ObjectId(String((payload as InvitePayload).entityId)))
+  const entityIdForMail = payloadData.entityId != null
+    ? (payloadData.entityId instanceof Types.ObjectId
+        ? payloadData.entityId
+        : new Types.ObjectId(String(payloadData.entityId)))
     : undefined;
 
   await enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
