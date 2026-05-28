@@ -1,3 +1,10 @@
+## [0.3.19](https://github.com/programisto-labs/edrm-exams/compare/v0.3.18...v0.3.19) (2026-05-28)
+
+
+### Bug Fixes
+
+* add force URL with params ([9a3f33f](https://github.com/programisto-labs/edrm-exams/commit/9a3f33f47bc30766a362b2b987f52f122eb5477b))
+
 ## [0.3.18](https://github.com/programisto-labs/edrm-exams/compare/v0.3.17...v0.3.18) (2026-02-19)
 
 
