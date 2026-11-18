@@ -1,3 +1,10 @@
+## [0.3.20](https://github.com/programisto-labs/edrm-exams/compare/v0.3.19...v0.3.20) (2026-11-18)
+
+
+### Bug Fixes
+
+* boîte candidat de l'entité pour les invitations et nom du métier ([0fb68e8](https://github.com/programisto-labs/edrm-exams/commit/0fb68e8be15f058ece8550765a288379b8b125f9))
+
 ## [0.3.19](https://github.com/programisto-labs/edrm-exams/compare/v0.3.18...v0.3.19) (2026-05-28)
 
 
