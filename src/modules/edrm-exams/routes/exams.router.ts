@@ -11,28 +11,8 @@ import { computeScoresByCategory } from '../lib/score-utils.js';
 import { getTestInvitationLinkBase } from '../lib/test-invitation-link.js';
 import jwt from 'jsonwebtoken';
 import { Document, Types } from 'mongoose';
-
-// Fonction utilitaire pour récupérer le nom du job
-async function getJobName(targetJob: any): Promise<string> {
-  // Si c'est déjà une string (ancien format), on la retourne directement
-  if (typeof targetJob === 'string') {
-    return targetJob;
-  }
-
-  // Si c'est un ObjectId, on récupère le job
-  if (targetJob && typeof targetJob === 'object' && targetJob._id) {
-    const job = await TestJob.findById(targetJob._id);
-    return job ? job.name : 'Job inconnu';
-  }
-
-  // Si c'est juste un ObjectId
-  if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
-    const job = await TestJob.findById(targetJob);
-    return job ? job.name : 'Job inconnu';
-  }
-
-  return 'Job inconnu';
-}
+import { getJobName } from '../lib/job-name.js';
+import { resolveCandidateEmailTransport } from '../lib/candidate-email-transport.js';
 
 function appendSlugIfMissing(link: string, slug?: unknown): string {
   if (typeof slug !== 'string' || slug.trim() === '') return link;
@@ -1723,14 +1703,12 @@ class ExamsRouter extends EnduranceRouter {
           newResult._id
         );
 
-        // Récupérer les credentials d'envoi
-        const emailUser = process.env.EMAIL_USER;
-        const emailPassword = process.env.EMAIL_PASSWORD;
-
         // Envoyer l'email via l'event emitter (entityId pour utiliser le template de l'entité courante, ex. École de Turing)
         const entityIdForMail = req.entity?._id != null
           ? (req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id)))
           : undefined;
+        // Boîte candidat de l'entité si l'hôte l'a fournie, sinon EMAIL_USER / EMAIL_PASSWORD.
+        const { emailUser, emailPassword } = await resolveCandidateEmailTransport(entityIdForMail);
         await emitter.emit(eventTypes.SEND_EMAIL, {
           template: 'test-invitation',
           to: email,
@@ -2586,8 +2564,6 @@ class ExamsRouter extends EnduranceRouter {
         }
 
         const email = contact.email;
-        const emailUser = process.env.EMAIL_USER;
-        const emailPassword = process.env.EMAIL_PASSWORD;
 
         // Construire le lien d'invitation (URL de l'entité ou défaut env)
         const testLinkBase = getTestInvitationLinkBase(req.entity);
@@ -2605,6 +2581,7 @@ class ExamsRouter extends EnduranceRouter {
         const entityIdForReinvite = req.entity?._id != null
           ? (req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id)))
           : undefined;
+        const { emailUser, emailPassword } = await resolveCandidateEmailTransport(entityIdForReinvite);
         await emitter.emit(eventTypes.SEND_EMAIL, {
           template: 'test-invitation',
           to: email,
