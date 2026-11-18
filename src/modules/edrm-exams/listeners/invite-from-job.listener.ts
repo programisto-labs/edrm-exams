@@ -4,6 +4,7 @@ import Test from '../models/test.model.js';
 import TestResult from '../models/test-result.model.js';
 import Candidate from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
+import { resolveCandidateEmailTransport } from '../lib/candidate-email-transport.js';
 
 const EVENT_INVITE_TO_TECHNICAL_TEST = 'INVITE_TO_TECHNICAL_TEST';
 
@@ -87,14 +88,13 @@ async function inviteCandidateToTest (payload: InvitePayload): Promise<void> {
   const linkBase = payloadData.testInvitationLinkBase ?? process.env.TEST_INVITATION_LINK ?? '';
   const rawTestLink = invitationLinkOverride || (linkBase + email);
   const testLink = appendRedirectUrlIfMissing(rawTestLink, testId, String(newResult._id));
-  const emailUser = process.env.EMAIL_USER;
-  const emailPassword = process.env.EMAIL_PASSWORD;
-
   const entityIdForMail = payloadData.entityId != null
     ? (payloadData.entityId instanceof Types.ObjectId
         ? payloadData.entityId
         : new Types.ObjectId(String(payloadData.entityId)))
     : undefined;
+  // Boîte candidat de l'entité si l'hôte l'a fournie, sinon EMAIL_USER / EMAIL_PASSWORD.
+  const { emailUser, emailPassword } = await resolveCandidateEmailTransport(entityIdForMail);
 
   await enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
     template: 'test-invitation',

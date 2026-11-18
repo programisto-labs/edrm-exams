@@ -2,29 +2,7 @@ import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmi
 import CandidateModel from '../models/candidate.model.js';
 import TestResult, { TestState } from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
-import TestJob from '../models/test-job.model.js';
-
-// Fonction utilitaire pour récupérer le nom du job
-async function getJobName(targetJob: any): Promise<string> {
-    // Si c'est déjà une string (ancien format), on la retourne directement
-    if (typeof targetJob === 'string') {
-        return targetJob;
-    }
-
-    // Si c'est un ObjectId, on récupère le job
-    if (targetJob && typeof targetJob === 'object' && targetJob._id) {
-        const job = await TestJob.findById(targetJob._id);
-        return job ? job.name : 'Job inconnu';
-    }
-
-    // Si c'est juste un ObjectId
-    if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
-        const job = await TestJob.findById(targetJob);
-        return job ? job.name : 'Job inconnu';
-    }
-
-    return 'Job inconnu';
-}
+import { getJobName } from '../lib/job-name.js';
 
 // eslint-disable-next-line no-unused-vars
 interface CandidateData {

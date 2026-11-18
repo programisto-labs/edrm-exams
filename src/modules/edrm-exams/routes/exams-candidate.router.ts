@@ -3,31 +3,10 @@ import CandidateModel from '../models/candidate.model.js';
 import ContactModel from '../models/contact.model.js';
 import TestResult from '../models/test-result.model.js';
 import Test from '../models/test.model.js';
-import TestJob from '../models/test-job.model.js';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
-
-// Fonction utilitaire pour récupérer le nom du job
-async function getJobName(targetJob: any): Promise<string> {
-    // Si c'est déjà une string (ancien format), on la retourne directement
-    if (typeof targetJob === 'string') {
-        return targetJob;
-    }
-
-    // Si c'est un ObjectId, on récupère le job
-    if (targetJob && typeof targetJob === 'object' && targetJob._id) {
-        const job = await TestJob.findById(targetJob._id);
-        return job ? job.name : 'Job inconnu';
-    }
-
-    // Si c'est juste un ObjectId
-    if (targetJob && typeof targetJob === 'object' && targetJob.toString) {
-        const job = await TestJob.findById(targetJob);
-        return job ? job.name : 'Job inconnu';
-    }
-
-    return 'Job inconnu';
-}
+import { getJobName } from '../lib/job-name.js';
+import { resolveCandidateEmailTransport } from '../lib/candidate-email-transport.js';
 
 /** Entité par défaut : candidats sans entityId lui sont rattachés. */
 function isDefaultEntity(req: any): boolean {
@@ -519,12 +498,13 @@ class CandidateRouter extends EnduranceRouter {
 
                 // Envoyer l'email avec le lien magique
                 const magicLink = `${process.env.CANDIDATE_MAGIC_LINK}${token}`;
+                const { emailUser, emailPassword } = await resolveCandidateEmailTransport(req.entity?._id);
                 await enduranceEmitter.emit(enduranceEventTypes.SEND_EMAIL, {
                     template: 'candidate-magic-link',
                     to: email,
-                    from: process.env.EMAIL_USER,
-                    emailUser: process.env.EMAIL_USER,
-                    emailPassword: process.env.EMAIL_PASSWORD,
+                    from: emailUser,
+                    emailUser,
+                    emailPassword,
                     data: {
                         magicLink
                     }
