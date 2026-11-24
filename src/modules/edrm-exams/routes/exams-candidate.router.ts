@@ -17,7 +17,8 @@ function isDefaultEntity(req: any): boolean {
 
 /** Filtre MongoDB pour les candidats de l'entité courante (évite les doublons quand un même contact existe sur plusieurs entités). */
 function buildCandidateEntityFilter(req: any): Record<string, unknown> {
-    if (!req?.entity?._id) return {};
+    // Sans entité de contexte : aucun candidat (jamais toute la base).
+    if (!req?.entity?._id) return { _id: { $in: [] } };
     const eid = req.entity._id instanceof Types.ObjectId ? req.entity._id : new Types.ObjectId(String(req.entity._id));
     if (isDefaultEntity(req)) {
         return {
@@ -52,8 +53,9 @@ class CandidateRouter extends EnduranceRouter {
     }
 
     setupRoutes(): void {
+        // Fiches candidats : session obligatoire, toujours dans l'entité de la requête.
         const authenticatedOptions: SecurityOptions = {
-            requireAuth: false,
+            requireAuth: true,
             permissions: []
         };
 
@@ -358,7 +360,9 @@ class CandidateRouter extends EnduranceRouter {
             const { id } = req.params;
 
             try {
-                const candidate = await CandidateModel.findById(id);
+                const candidate = Types.ObjectId.isValid(String(id))
+                    ? await CandidateModel.findOne({ _id: id, ...buildCandidateEntityFilter(req) })
+                    : null;
 
                 if (!candidate) {
                     return res.status(404).json({ message: 'no candidate found with this id' });
@@ -417,7 +421,7 @@ class CandidateRouter extends EnduranceRouter {
                 }
 
                 // Puis chercher le candidat avec ce contact
-                const candidate = await CandidateModel.findOne({ contact: contact._id });
+                const candidate = await CandidateModel.findOne({ contact: contact._id, ...buildCandidateEntityFilter(req) });
 
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
@@ -666,8 +670,10 @@ class CandidateRouter extends EnduranceRouter {
                 const sortBy = req.query.sortBy as string || 'invitationDate';
                 const sortOrder = req.query.sortOrder as string || 'desc';
 
-                // Vérifier si le candidat existe
-                const candidate = await CandidateModel.findById(candidateId);
+                // Vérifier si le candidat existe (dans l'entité de la requête)
+                const candidate = Types.ObjectId.isValid(String(candidateId))
+                    ? await CandidateModel.findOne({ _id: candidateId, ...buildCandidateEntityFilter(req) })
+                    : null;
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
                 }

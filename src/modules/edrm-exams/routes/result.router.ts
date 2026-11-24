@@ -83,6 +83,14 @@ class ResultRouter extends EnduranceRouter {
                 if (!candidate) {
                     return res.status(404).json({ message: 'Candidat non trouvé' });
                 }
+                // Seul le candidat lui-même, avec le jeton de sa session (lien magique), lit ses résultats.
+                const auth = typeof req.headers?.authorization === 'string' ? req.headers.authorization : '';
+                const token = auth.startsWith('Bearer ') ? auth.slice('Bearer '.length).trim() : '';
+                const stored = (candidate as any).authToken as string | undefined;
+                const expiresAt = (candidate as any).authTokenExpiresAt as Date | undefined;
+                if (!token || !stored || token !== stored || (expiresAt && new Date(expiresAt).getTime() < Date.now())) {
+                    return res.status(401).json({ message: 'Authentification requise' });
+                }
 
                 // Construction de la requête
                 const query: any = { candidateId };

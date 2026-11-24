@@ -13,8 +13,9 @@ class CompanyRouter extends EnduranceRouter {
     }
 
     setupRoutes(): void {
+        // Entreprises : session obligatoire.
         const authenticatedOptions: SecurityOptions = {
-            requireAuth: false,
+            requireAuth: true,
             permissions: []
         };
 

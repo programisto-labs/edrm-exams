@@ -82,11 +82,25 @@ function isDefaultEntity(req: any): boolean {
 
 /** Vérifie qu'un test appartient à l'entité courante (pour GET/UPDATE/DELETE). Pour l'entité par défaut, un test sans entityId est accepté. */
 function testBelongsToEntity(test: any, req: any): boolean {
-  if (!req?.entity?._id) return true;
+  // Sans entité de contexte, aucun test : jamais de lecture hors de l'entité de la requête.
+  if (!req?.entity?._id) return false;
   const testEid = test?.entityId?.toString?.() ?? (test?.entityId != null ? String(test.entityId) : '');
   const reqEid = req.entity._id?.toString?.() ?? String(req.entity._id);
   if (isDefaultEntity(req)) return testEid === reqEid || testEid === '';
   return testEid === reqEid;
+}
+
+/** Résultat d'un test de l'entité de la requête. */
+async function resultBelongsToEntity(result: any, req: any): Promise<boolean> {
+  if (!result?.testId) return false;
+  const test = await Test.findById(result.testId).select('entityId').lean();
+  return !!test && testBelongsToEntity(test, req);
+}
+
+/** Question d'un test de l'entité de la requête (une question ne porte ni test ni entité). */
+async function questionBelongsToEntity(questionId: unknown, req: any): Promise<boolean> {
+  const test = await Test.findOne({ 'questions.questionId': questionId }).select('entityId').lean();
+  return !!test && testBelongsToEntity(test, req);
 }
 
 // Fonction pour migrer automatiquement un test si nécessaire
@@ -193,8 +207,9 @@ class ExamsRouter extends EnduranceRouter {
   }
 
   setupRoutes(): void {
+    // Administration des tests : session obligatoire (les candidats passent par /result).
     const authenticatedOptions: SecurityOptions = {
-      requireAuth: false,
+      requireAuth: true,
       permissions: []
     };
     /**
@@ -1053,7 +1068,7 @@ class ExamsRouter extends EnduranceRouter {
     this.get('/test/question/:questionId', authenticatedOptions, async (req: any, res: any) => {
       const { questionId } = req.params;
       const question = await TestQuestion.findById(questionId);
-      if (!question) {
+      if (!question || !(await questionBelongsToEntity(question._id, req))) {
         return res.status(404).json({ message: 'no question founded with this id' });
       }
       res.status(200).json({ data: question });
@@ -1135,16 +1150,17 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.delete('/test/question/:testId/:questionId', authenticatedOptions, async (req: any, res: any) => {
       const { testId, questionId } = req.params;
-      const question = await TestQuestion.findByIdAndDelete(questionId);
+      // Le test et son entité d'abord : la question n'est supprimée qu'ensuite, et seulement si elle est de ce test.
       const test = await Test.findById(testId);
-      if (!question) {
+      if (!test || !testBelongsToEntity(test, req)) {
+        return res.status(404).json({ message: 'no test founded with this id' });
+      }
+      if (!test.questions.some(q => q.questionId.toString() === questionId)) {
         return res.status(404).json({ message: 'no question founded with this id' });
       }
-      if (!test) {
-        return res.status(404).json({ message: 'no test founded with this id' });
-      }
-      if (!testBelongsToEntity(test, req)) {
-        return res.status(404).json({ message: 'no test founded with this id' });
+      const question = await TestQuestion.findByIdAndDelete(questionId);
+      if (!question) {
+        return res.status(404).json({ message: 'no question founded with this id' });
       }
       // Supprimer la question du tableau questions en filtrant par questionId
       test.questions = test.questions.filter(q => q.questionId.toString() !== questionId);
@@ -1229,7 +1245,7 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const question = await TestQuestion.findById(id);
-        if (!question) {
+        if (!question || !(await questionBelongsToEntity(question._id, req))) {
           return res.status(404).json({ message: 'no question founded with this id' });
         }
         if (instruction) {
@@ -1555,6 +1571,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
 
         if (!result) {
           return res.status(404).json({ message: 'no result founded with this id' });
@@ -1584,7 +1603,12 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.get('/results/', authenticatedOptions, async (req: any, res: any) => {
       try {
-        const results = await TestResult.find();
+        // Résultats des tests de l'entité de la requête seulement (avant : toute la plateforme).
+        if (!req?.entity?._id) {
+          return res.status(404).json({ message: 'no results founded' });
+        }
+        const testIds = (await Test.find({ entityId: req.entity._id }).select('_id').lean()).map((t: any) => t._id);
+        const results = await TestResult.find({ testId: { $in: testIds } });
         if (!results) {
           return res.status(404).json({ message: 'no results founded' });
         }
@@ -1751,6 +1775,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -1805,6 +1832,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -1854,7 +1884,7 @@ class ExamsRouter extends EnduranceRouter {
       try {
         const question = await TestQuestion.findById(questionId);
 
-        if (!question) {
+        if (!question || !(await questionBelongsToEntity(question._id, req))) {
           return res.status(404).json({ message: 'not found' });
         }
 
@@ -1906,6 +1936,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id) as ExtendedResult;
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -1970,6 +2003,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -2007,6 +2043,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id) as ExtendedResult;
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -2081,6 +2120,9 @@ class ExamsRouter extends EnduranceRouter {
       const { resultId } = req.params;
       try {
         const result = await TestResult.findById(resultId);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -2131,6 +2173,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(id);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -2531,6 +2576,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const result = await TestResult.findById(resultId);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'Result not found' });
         }
@@ -2643,6 +2691,9 @@ class ExamsRouter extends EnduranceRouter {
 
         // Récupérer le résultat de test
         const result = await TestResult.findById(testResultId);
+        if (result && !(await resultBelongsToEntity(result, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!result) {
           return res.status(404).json({ message: 'TestResult non trouvé' });
         }
@@ -2710,6 +2761,9 @@ class ExamsRouter extends EnduranceRouter {
 
       try {
         const testResult = await TestResult.findById(id);
+        if (testResult && !(await resultBelongsToEntity(testResult, req))) {
+          return res.status(404).json({ message: 'Résultat non trouvé' });
+        }
         if (!testResult) {
           return res.status(404).json({ message: 'TestResult not found' });
         }
