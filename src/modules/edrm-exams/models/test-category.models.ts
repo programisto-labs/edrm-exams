@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 
 @EnduranceModelType.modelOptions({
@@ -8,6 +9,13 @@ import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 class TestCategory extends EnduranceSchema {
     @EnduranceModelType.prop({ required: true })
     public name!: string;
+
+    /**
+     * Workspace propriétaire (Lasco). Les entrées sont cherchées et créées dans le workspace de la requête ;
+     * sans workspace (usage hors portail), entrées communes comme avant.
+     */
+    @EnduranceModelType.prop({ type: () => Types.ObjectId, required: false, index: true })
+    public workspaceId?: Types.ObjectId;
 
     public static getModel() {
         return TestCategoryModel;

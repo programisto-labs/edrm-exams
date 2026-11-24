@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { catalogWorkspaceIdForEntity, findOrCreateJob } from '../lib/catalog-scope.js';
 import { EnduranceSchema, EnduranceModelType } from '@programisto/endurance';
 import Company from './company.model.js';
 import TestQuestion from './test-question.model.js';
@@ -100,13 +101,9 @@ class Test extends EnduranceSchema {
         if (typeof testData.targetJob === 'string') {
             try {
                 // Chercher si le job existe déjà
-                let jobType = await TestJob.findOne({ name: testData.targetJob });
-
-                // Si pas trouvé, on le crée
-                if (!jobType) {
-                    jobType = new TestJob({ name: testData.targetJob });
-                    await jobType.save();
-                }
+                // Métier cherché (ou créé) dans le workspace de l'entité du test.
+                const workspaceId = await catalogWorkspaceIdForEntity(testData.entityId);
+                const jobType = await findOrCreateJob(testData.targetJob, workspaceId);
 
                 // Mettre à jour la référence
                 (this as any).targetJob = jobType._id;
