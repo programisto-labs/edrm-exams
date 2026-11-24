@@ -1,6 +1,9 @@
-import mongoose, { Types } from 'mongoose';
+import mongoose from 'mongoose';
+import { catalogFilter, toObjectId, type CatalogWorkspaceId } from './catalog-workspace.js';
 import TestCategory from '../models/test-category.models.js';
 import TestJob from '../models/test-job.model.js';
+
+export { catalogFilter, catalogWorkspaceId, type CatalogWorkspaceId } from './catalog-workspace.js';
 
 /**
  * Catalogue des tests (catégories, métiers) propre à chaque workspace.
@@ -12,20 +15,6 @@ import TestJob from '../models/test-job.model.js';
  * Sans workspace (usage du module hors portail), le comportement historique est gardé : entrées communes,
  * sans `workspaceId`.
  */
-export type CatalogWorkspaceId = Types.ObjectId | null;
-
-function toObjectId (value: unknown): Types.ObjectId | null {
-  const raw = value && typeof value === 'object' && '_id' in (value as object) ? (value as { _id: unknown })._id : value;
-  if (raw == null || raw === '') return null;
-  const str = String(raw);
-  return Types.ObjectId.isValid(str) ? new Types.ObjectId(str) : null;
-}
-
-/** Workspace de la requête (workspace épinglé, sinon celui de l'entité), ou null hors portail. */
-export function catalogWorkspaceId (req: any): CatalogWorkspaceId {
-  return toObjectId(req?.workspace?._id) ?? toObjectId(req?.entity?.workspaceId);
-}
-
 /** Workspace de l'entité d'un test (migration des anciens tests, hors requête). */
 export async function catalogWorkspaceIdForEntity (entityId: unknown): Promise<CatalogWorkspaceId> {
   const id = toObjectId(entityId);
@@ -33,11 +22,6 @@ export async function catalogWorkspaceIdForEntity (entityId: unknown): Promise<C
   if (!id || !db) return null;
   const entity = await db.collection('entities').findOne({ _id: id }, { projection: { workspaceId: 1 } });
   return toObjectId(entity?.workspaceId);
-}
-
-/** Filtre Mongo des entrées visibles depuis ce workspace. */
-export function catalogFilter (workspaceId: CatalogWorkspaceId): Record<string, unknown> {
-  return workspaceId ? { workspaceId } : { workspaceId: { $exists: false } };
 }
 
 /** Filtre « même nom » dans le workspace (comparaison exacte, comme avant). */

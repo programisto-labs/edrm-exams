@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Types } from 'mongoose';
-import { catalogFilter, catalogWorkspaceId } from '../dist/modules/edrm-exams/lib/catalog-scope.js';
+import { catalogFilter, catalogWorkspaceId } from '../dist/modules/edrm-exams/lib/catalog-workspace.js';
 
 describe('catalogue par workspace', () => {
   const ws = new Types.ObjectId();
