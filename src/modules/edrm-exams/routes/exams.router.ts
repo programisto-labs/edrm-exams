@@ -1,3 +1,13 @@
+import {
+  catalogFilter,
+  catalogWorkspaceId,
+  findCategoryByName,
+  findCategoryInWorkspace,
+  findJobByName,
+  findJobInWorkspace,
+  findOrCreateCategory,
+  findOrCreateJob
+} from '../lib/catalog-scope.js';
 import { EnduranceRouter, EnduranceAuthMiddleware, SecurityOptions, enduranceEmitter as emitter, enduranceEventTypes as eventTypes } from '@programisto/endurance';
 import Test from '../models/test.model.js';
 import TestQuestion from '../models/test-question.model.js';
@@ -220,8 +230,7 @@ class ExamsRouter extends EnduranceRouter {
       }
 
       try {
-        const newCategory = new TestCategory({ name });
-        await newCategory.save();
+        const newCategory = await findOrCreateCategory(String(name), catalogWorkspaceId(req));
         res.status(201).json({ message: 'category created with sucess', category: newCategory });
       } catch (err) {
         console.error('error when creating category : ', err);
@@ -244,7 +253,7 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.get('/categories', authenticatedOptions, async (req: any, res: any) => {
       try {
-        const categories = await TestCategory.find();
+        const categories = await TestCategory.find(catalogFilter(catalogWorkspaceId(req)));
         res.status(200).json({ array: categories });
       } catch (err) {
         console.error('error when creating category : ', err);
@@ -276,7 +285,7 @@ class ExamsRouter extends EnduranceRouter {
     this.get('/categorie/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       try {
-        const category = await TestCategory.findById(id);
+        const category = await findCategoryInWorkspace(id, catalogWorkspaceId(req));
         if (!category) {
           return res.status(404).json({ message: 'no category founded with this id' });
         }
@@ -320,8 +329,7 @@ class ExamsRouter extends EnduranceRouter {
       }
 
       try {
-        const newJob = new TestJob({ name });
-        await newJob.save();
+        const newJob = await findOrCreateJob(String(name), catalogWorkspaceId(req));
         res.status(201).json({ message: 'job created with success', job: newJob });
       } catch (err) {
         console.error('error when creating job : ', err);
@@ -344,7 +352,7 @@ class ExamsRouter extends EnduranceRouter {
      */
     this.get('/jobs', authenticatedOptions, async (req: any, res: any) => {
       try {
-        const jobs = await TestJob.find();
+        const jobs = await TestJob.find(catalogFilter(catalogWorkspaceId(req)));
         res.status(200).json({ array: jobs });
       } catch (err) {
         console.error('error when getting jobs : ', err);
@@ -376,7 +384,7 @@ class ExamsRouter extends EnduranceRouter {
     this.get('/jobs/:id', authenticatedOptions, async (req: any, res: any) => {
       const { id } = req.params;
       try {
-        const job = await TestJob.findById(id);
+        const job = await findJobInWorkspace(id, catalogWorkspaceId(req));
         if (!job) {
           return res.status(404).json({ message: 'no job founded with this id' });
         }
@@ -487,22 +495,14 @@ class ExamsRouter extends EnduranceRouter {
         // Traiter le targetJob - si c'est une string, on cherche ou crée le TestJob
         let targetJobId;
         if (typeof targetJob === 'string') {
-          let existingJob = await TestJob.findOne({ name: targetJob });
-          if (!existingJob) {
-            existingJob = new TestJob({ name: targetJob });
-            await existingJob.save();
-          }
+          const existingJob = await findOrCreateJob(targetJob, catalogWorkspaceId(req));
           targetJobId = existingJob._id;
         } else {
           targetJobId = targetJob;
         }
 
         const processedCategories = await Promise.all(categories?.map(async (category: { name: string, expertiseLevel: string }) => {
-          let existingCategory = await TestCategory.findOne({ name: category.name });
-
-          if (!existingCategory) {
-            existingCategory = await TestCategory.create({ name: category.name });
-          }
+          const existingCategory = await findOrCreateCategory(category.name, catalogWorkspaceId(req));
 
           return {
             categoryId: existingCategory._id,
@@ -577,11 +577,7 @@ class ExamsRouter extends EnduranceRouter {
         if (targetJob) {
           // Traiter le targetJob - si c'est une string, on cherche ou crée le TestJob
           if (typeof targetJob === 'string') {
-            let existingJob = await TestJob.findOne({ name: targetJob });
-            if (!existingJob) {
-              existingJob = new TestJob({ name: targetJob });
-              await existingJob.save();
-            }
+            const existingJob = await findOrCreateJob(targetJob, catalogWorkspaceId(req));
             (test as any).targetJob = existingJob._id;
           } else {
             test.targetJob = targetJob;
@@ -592,11 +588,7 @@ class ExamsRouter extends EnduranceRouter {
 
         if (categories) {
           const processedCategories = await Promise.all(categories.map(async (category: { name: string, expertiseLevel: string }) => {
-            let existingCategory = await TestCategory.findOne({ name: category.name });
-
-            if (!existingCategory) {
-              existingCategory = await TestCategory.create({ name: category.name });
-            }
+            const existingCategory = await findOrCreateCategory(category.name, catalogWorkspaceId(req));
 
             return {
               categoryId: existingCategory._id,
@@ -827,7 +819,7 @@ class ExamsRouter extends EnduranceRouter {
         // Filtres
         if (targetJob !== 'all') {
           // Si on filtre par targetJob, on cherche d'abord le TestJob correspondant
-          const jobType = await TestJob.findOne({ name: targetJob });
+          const jobType = await findJobByName(targetJob, catalogWorkspaceId(req));
           if (jobType) {
             query.targetJob = jobType._id;
           } else {
@@ -845,7 +837,10 @@ class ExamsRouter extends EnduranceRouter {
         // Recherche sur testName et targetJob
         if (search) {
           // Pour la recherche sur targetJob, on cherche d'abord les jobs qui correspondent
-          const matchingJobs = await TestJob.find({ name: { $regex: search, $options: 'i' } });
+          const matchingJobs = await TestJob.find({
+            ...catalogFilter(catalogWorkspaceId(req)),
+            name: { $regex: search, $options: 'i' }
+          });
           const jobIds = matchingJobs.map(job => job._id);
 
           query.$or = [
@@ -949,7 +944,7 @@ class ExamsRouter extends EnduranceRouter {
       const { categoryName } = req.body;
 
       try {
-        const category = await TestCategory.findOne({ name: categoryName });
+        const category = await findCategoryByName(categoryName, catalogWorkspaceId(req));
         if (!category) return res.status(404).json({ message: 'Category not found' });
 
         let test = await Test.findById(testId);
@@ -1007,12 +1002,7 @@ class ExamsRouter extends EnduranceRouter {
       const { categoryName, expertiseLevel } = req.body;
 
       try {
-        let category = await TestCategory.findOne({ name: categoryName });
-
-        if (!category) {
-          category = new TestCategory({ name: categoryName });
-          await category.save();
-        }
+        const category = await findOrCreateCategory(categoryName, catalogWorkspaceId(req));
 
         const test = await Test.findById(testId) as ExtendedTest;
 
