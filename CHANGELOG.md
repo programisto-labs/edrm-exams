@@ -1,3 +1,15 @@
+# [0.4.0](https://github.com/programisto-labs/edrm-exams/compare/v0.3.20...v0.4.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* test du périmètre sans démarrer l'application, build avant les tests en CI ([f3776ea](https://github.com/programisto-labs/edrm-exams/commit/f3776ea911def3699147de29ea330e1b3ed0c16f))
+
+
+### Features
+
+* catalogue des tests (catégories, métiers) propre à chaque workspace ([c8904bb](https://github.com/programisto-labs/edrm-exams/commit/c8904bb131333112e63cd40fa47e0a20a2c5f5be))
+
 ## [0.3.20](https://github.com/programisto-labs/edrm-exams/compare/v0.3.19...v0.3.20) (2026-11-18)
 
 
